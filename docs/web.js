@@ -16,8 +16,12 @@
 
     // ---------- Offline og opdateringer ----------
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+        const openedAt = Date.now();
         navigator.serviceWorker.register('sw.js').then(reg => {
             const offerUpdate = worker => {
+                // Lige efter appen er åbnet: skift til den nye version med det samme (genindlæser én gang).
+                // Er man i gang med noget, spørges der i stedet, så man ikke mister det man laver.
+                if (Date.now() - openedAt < 20000) { worker.postMessage('skipWaiting'); return; }
                 const box = el('div', { class: 'web-banner' },
                     el('span', {}, 'Der er en ny version af appen.'),
                     el('button', { type: 'button', class: 'btn btn-small btn-gold', onclick: () => worker.postMessage('skipWaiting') }, 'Opdatér'));
