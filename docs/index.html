@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- Web-app (tilføjet af web-app/build.py) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#0b2545">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Koran">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+    <link rel="stylesheet" href="web.css">
+    <meta name="color-scheme" content="light dark">
+    <!-- Google-oplæsning (reserve til hadith) afviser kald med Referer -->
+    <meta name="referrer" content="no-referrer">
+    <title>Koran-memorering</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="pages.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand">
+                <span class="brand-star" aria-hidden="true"></span>
+                <div>
+                    <div class="brand-ar">حِفْظُ القُرْآن</div>
+                    <div class="brand-da" id="pageTitle">Koran-memorering</div>
+                </div>
+            </div>
+            <div class="header-actions">
+            <button class="icon-btn" id="pagesBtn" aria-label="Sider" title="Sider" aria-haspopup="true" aria-expanded="false">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg>
+            </button>
+            <button class="icon-btn" id="settingsBtn" aria-label="Indstillinger" title="Indstillinger">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.3 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1c.5.4 1.1.7 1.7 1L11 21h4l.3-2.9c.6-.3 1.2-.6 1.7-1l2.5 1 2-3.5L19.4 13zM13 15.5A3.5 3.5 0 1 1 13 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+            </button>
+            </div>
+        </div>
+        <nav class="pages-menu" id="pagesMenu" hidden aria-label="Sider">
+            <button type="button" data-page="memorize"><span class="pm-icon">۞</span><span><b>Memorering</b><small>Koran, oversættelse og tafsir</small></span></button>
+            <button type="button" data-page="progress"><span class="pm-icon">📈</span><span><b>Fremskridt</b><small>Gentagelse og hvor meget du kan</small></span></button>
+            <button type="button" data-page="search"><span class="pm-icon">🔍</span><span><b>Søg i Koranen</b><small>Arabisk, engelsk og dansk</small></span></button>
+            <button type="button" data-page="notes"><span class="pm-icon">❖</span><span><b>Noter</b><small>Dine kategorier og gemte vers</small></span></button>
+            <button type="button" data-page="hadith"><span class="pm-icon">✎</span><span><b>Hadith</b><small>Arabisk tekst, forklaring og oversættelse</small></span></button>
+            <button type="button" data-page="adhkar"><span class="pm-icon">❁</span><span><b>Adhkar</b><small>Hisn al-Muslim med oplæsning og tæller</small></span></button>
+            <button type="button" data-page="dict"><span class="pm-icon">ع</span><span><b>Ordbøger</b><small>Arabisk (Hans Wehr, Lisan, Maqayis…) og andre sprog</small></span></button>
+            <button type="button" data-page="calendar"><span class="pm-icon">☾</span><span><b>Hijri-kalender</b><small>Islamiske datoer og højtider</small></span></button>
+            <button type="button" data-page="qibla"><span class="pm-icon">◈</span><span><b>Qibla</b><small>Kompas mod Kaabaen</small></span></button>
+        </nav>
+    </header>
+
+    <main class="container page" id="page-memorize">
+        <!-- Valg af sura og vers -->
+        <section class="card setup">
+            <div class="field">
+                <label for="surahSelect">Sura</label>
+                <select id="surahSelect"></select>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label for="startVerse">Fra vers</label>
+                    <input type="number" id="startVerse" min="1" value="1" inputmode="numeric">
+                </div>
+                <div class="field">
+                    <label for="endVerse">Til vers</label>
+                    <input type="number" id="endVerse" min="1" value="5" inputmode="numeric">
+                </div>
+                <button class="chip-btn" id="wholeSurahBtn" type="button">Hele suraen</button>
+            </div>
+            <div class="toggles">
+                <label class="toggle"><input type="checkbox" id="shuffleCheck" checked><span>Bland vers</span></label>
+                <label class="toggle"><input type="checkbox" id="hideCheck" checked><span>Skjul vers (øv udenad)</span></label>
+            </div>
+            <button class="btn btn-primary btn-block" id="startBtn">Start</button>
+            <button class="btn btn-gold btn-block mt" id="srsTodayBtn" disabled>📅 Dagens gentagelse</button>
+        </section>
+
+        <!-- Reference og navigation -->
+        <section class="card reference-card">
+            <div class="medallion">
+                <div class="ref-surah" id="refSurah">Vælg sura og tryk Start</div>
+                <div class="ref-verse" id="refVerse"></div>
+                <div class="ref-progress" id="refProgress"></div>
+            </div>
+            <div class="nav-row">
+                <button class="btn btn-ghost" id="prevBtn" disabled aria-label="Forrige vers">‹ Forrige</button>
+                <button class="btn btn-gold" id="showVerseBtn" disabled>Vis vers</button>
+                <button class="btn btn-ghost" id="nextBtn" disabled aria-label="Næste vers">Næste ›</button>
+            </div>
+            <div class="srs-rating" id="srsRating" hidden>
+                <div class="srs-q">Hvor godt kunne du verset?</div>
+                <div class="srs-btns">
+                    <button type="button" class="btn srs-0" data-rate="0">✗ Kunne ikke</button>
+                    <button type="button" class="btn srs-1" data-rate="1">≈ Næsten</button>
+                    <button type="button" class="btn srs-2" data-rate="2">✓ Kunne</button>
+                </div>
+            </div>
+            <div class="note center" id="srsInfo"></div>
+            <button class="btn btn-ghost btn-block save-verse-btn" id="saveVerseBtn" disabled>☆ Gem vers i noter</button>
+        </section>
+
+        <!-- Arabisk -->
+        <section class="card panel">
+            <div class="panel-header">
+                <h2><span class="orn">۞</span> القرآن الكريم</h2>
+                <div class="font-controls" data-target="arabic">
+                    <button type="button" data-step="-2" aria-label="Mindre skrift">−</button>
+                    <span class="size">32</span>
+                    <button type="button" data-step="2" aria-label="Større skrift">+</button>
+                </div>
+            </div>
+            <div class="arabic-box" id="arabicDisplay" dir="rtl" lang="ar"></div>
+        </section>
+
+        <!-- Oversættelse af vers -->
+        <section class="card panel">
+            <div class="panel-header">
+                <h2><span class="orn">۞</span> Oversættelse</h2>
+                <div class="font-controls" data-target="trans">
+                    <button type="button" data-step="-1" aria-label="Mindre skrift">−</button>
+                    <span class="size">18</span>
+                    <button type="button" data-step="1" aria-label="Større skrift">+</button>
+                </div>
+            </div>
+            <select id="translationSelect" class="full"></select>
+            <div class="translation-box" id="translationDisplay"></div>
+            <div class="note" id="translationNote"></div>
+        </section>
+
+        <!-- Åbenbaringsanledning -->
+        <section class="card panel">
+            <div class="panel-header">
+                <h2><span class="orn">۞</span> Åbenbaringsanledning · أسباب النزول</h2>
+            </div>
+            <button class="btn btn-small btn-ghost btn-block" id="asbabLoadBtn" disabled>Vis åbenbaringsanledning for verset</button>
+            <div class="asbab-box" id="asbabBox" hidden></div>
+            <div class="tafsir-actions" id="asbabActions" hidden>
+                <button class="btn btn-small btn-gold" id="asbabTranslateBtn">Oversæt</button>
+                <button class="btn btn-small btn-ai" id="asbabAiBtn">✨ Spørg AI</button>
+                <button class="btn btn-small btn-ghost" id="asbabCopyBtn">⧉ Kopiér</button>
+            </div>
+            <div class="item-mt" id="asbabMt" hidden></div>
+            <div class="note">Kilde: al-Wahidi (d. 468 H), Asbab an-Nuzul – engelsk oversættelse via altafsir.com. Ikke alle vers har en kendt anledning.</div>
+        </section>
+
+        <!-- Tafsir -->
+        <section class="card panel">
+            <div class="panel-header">
+                <h2><span class="orn">۞</span> Tafsir · تفسير</h2>
+                <div class="font-controls" data-target="tafsir">
+                    <button type="button" data-step="-1" aria-label="Mindre skrift">−</button>
+                    <span class="size">20</span>
+                    <button type="button" data-step="1" aria-label="Større skrift">+</button>
+                </div>
+            </div>
+            <select id="tafsirSelect" class="full"></select>
+            <div class="tabs" id="tafsirTabs" hidden>
+                <button type="button" class="tab active" data-view="original">Original</button>
+                <button type="button" class="tab" data-view="translated" id="tafsirTranslatedTab">Dansk</button>
+            </div>
+            <div class="status" id="tafsirStatus"></div>
+            <div class="tafsir-box" id="tafsirDisplay"></div>
+            <div class="tafsir-actions">
+                <button class="btn btn-small btn-primary" id="loadTafsirBtn" disabled>Hent tafsir</button>
+                <button class="btn btn-small btn-gold" id="translateTafsirBtn" hidden>Oversæt til dansk</button>
+                <button class="btn btn-small btn-ghost" id="copyTafsirBtn" hidden>⧉ Kopiér tekst</button>
+                <button class="btn btn-small btn-ai" id="askAiBtn" hidden>✨ Spørg AI</button>
+                <button class="btn btn-small btn-ghost" id="morePagesBtn" hidden>Næste side ›</button>
+                <button class="btn btn-small btn-ghost" id="openAltafsirBtn" disabled>Åbn på altafsir.com ↗</button>
+            </div>
+            <div class="note">Kilde: altafsir.com (Royal Aal al-Bayt Institute). Oversættelser er maskinoversat og kan indeholde fejl.</div>
+        </section>
+
+        <!-- Lyd -->
+        <section class="card panel audio-card">
+            <div class="field">
+                <label for="reciterSelect">Qari (recitator)</label>
+                <select id="reciterSelect"></select>
+            </div>
+            <div class="audio-row">
+                <label class="toggle"><input type="checkbox" id="repeatCheck"><span>Gentag</span></label>
+                <button class="btn btn-play" id="playBtn" disabled><span class="play-icon">▶</span> <span class="play-label">Afspil vers</span></button>
+            </div>
+            <details class="listen-box" id="listenBox">
+                <summary>🔁 Lyt og gentag et afsnit</summary>
+                <div class="row">
+                    <div class="field"><label for="lsFrom">Fra vers</label><input type="number" id="lsFrom" min="1" inputmode="numeric"></div>
+                    <div class="field"><label for="lsTo">Til vers</label><input type="number" id="lsTo" min="1" inputmode="numeric"></div>
+                </div>
+                <div class="row">
+                    <div class="field"><label for="lsPerVerse">Hvert vers</label><select id="lsPerVerse"></select></div>
+                    <div class="field"><label for="lsPause">Pause efter vers</label><select id="lsPause"></select></div>
+                    <div class="field"><label for="lsRounds">Hele afsnittet</label><select id="lsRounds"></select></div>
+                </div>
+                <label class="toggle"><input type="checkbox" id="lsShowText" checked><span>Vis verset mens det afspilles</span></label>
+                <button class="btn btn-play btn-block" id="lsStart">▶ Start afspilning</button>
+                <button class="btn btn-ghost btn-block" id="lsStop" hidden>■ Stop</button>
+                <div class="status" id="lsStatus"></div>
+                <div class="arabic-box ls-verse" id="lsVerse" dir="rtl" lang="ar" hidden></div>
+                <p class="note">Bruger den valgte sura og qari. Pausen giver tid til selv at recitere verset efter qarien.</p>
+            </details>
+        </section>
+
+        <footer class="footer">
+            <div class="footer-orn" aria-hidden="true">✦ ✧ ✦</div>
+            <div>رَبِّ زِدْنِي عِلْمًا</div>
+        </footer>
+    </main>
+
+
+    <!-- ===================== Fremskridt ===================== -->
+    <main class="container page" id="page-progress" hidden>
+        <section class="card"><div id="progressView"></div></section>
+    </main>
+
+    <!-- ===================== Søg i Koranen ===================== -->
+    <main class="container page" id="page-search" hidden>
+        <section class="card">
+            <form class="dict-search" id="qsForm">
+                <input type="search" id="qsInput" class="search" placeholder="🔍 Fx الرحمن, mercy eller barmhjertighed" dir="auto" autocomplete="off">
+                <button type="submit" class="btn btn-small btn-primary">Søg</button>
+            </form>
+            <div class="field mt"><select id="qsSurah"></select></div>
+            <label class="toggle"><input type="checkbox" id="qsTranslate" checked><span id="qsTranslateLabel">Søg også på dansk</span></label>
+            <p class="note">Arabisk søges uden hensyn til vokaltegn. Ord på andre sprog søges i den engelske oversættelse (Sahih International).</p>
+            <div id="qsResults"></div>
+        </section>
+    </main>
+
+    <!-- ===================== Hijri-kalender ===================== -->
+    <main class="container page" id="page-adhkar" hidden>
+        <section class="card"><div id="adhkarView"></div></section>
+    </main>
+
+    <main class="container page" id="page-calendar" hidden>
+        <section class="card"><div id="calendarView"></div></section>
+    </main>
+
+    <!-- ===================== Noter ===================== -->
+    <main class="container page" id="page-notes" hidden>
+        <section class="card">
+            <div class="notes-toolbar">
+                <nav class="crumbs" id="notesCrumbs"></nav>
+                <button class="icon-btn small" id="notesMenuBtn" aria-label="Flere valg">⋯</button>
+            </div>
+            <input type="search" id="notesSearch" class="search" placeholder="🔍 Søg i noter, vers, hadith og kommentarer…" dir="auto" autocomplete="off">
+            <div id="notesView"></div>
+            <div id="notesQuiz" hidden></div>
+        </section>
+    </main>
+
+    <!-- ===================== Hadith ===================== -->
+    <main class="container page" id="page-hadith" hidden>
+        <section class="card">
+            <form class="dict-search" id="hadithSearchForm">
+                <input type="search" id="hadithSearch" class="search" placeholder="🔍 Søg i hadith (arabisk eller dansk)…" dir="auto" autocomplete="off">
+                <button type="submit" class="btn btn-small btn-primary">Søg</button>
+            </form>
+            <div id="hadithResults" hidden></div>
+            <div id="hadithBrowse">
+            <div class="tabs" id="hadithTabs">
+                <button type="button" class="tab active" data-src="topics">Emner · HadeethEnc</button>
+                <button type="button" class="tab" data-src="books">Samlinger</button>
+            </div>
+            <nav class="crumbs" id="hadithCrumbs"></nav>
+            <div class="status" id="hadithStatus"></div>
+            <div id="hadithView"></div>
+            </div>
+        </section>
+        <p class="note center">Kilder: HadeethEnc.com (arabisk tekst, forklaring og officielle oversættelser) og fawazahmed0/hadith-api (de klassiske samlinger).</p>
+    </main>
+
+    <!-- ===================== Ordbøger ===================== -->
+    <main class="container page" id="page-dict" hidden>
+        <section class="card">
+            <div class="tabs" id="dictModeTabs">
+                <button type="button" class="tab" data-mode="search">🔍 Søg</button>
+                <button type="button" class="tab" data-mode="list">📖 Liste</button>
+            </div>
+            <div class="dict-target" id="dictTarget" hidden>
+                <div>
+                    <small>Find dette ord i listen:</small>
+                    <div class="dict-target-word" id="dictTargetWord" dir="rtl" lang="ar"></div>
+                </div>
+                <button type="button" class="icon-btn small ghost" id="dictTargetClose" aria-label="Luk">✕</button>
+            </div>
+            <div class="chip-tabs" id="dictTabs"></div>
+
+            <!-- Søg -->
+            <div id="dictSearchMode" hidden>
+                <div class="dict-search">
+                    <input type="search" id="dictInput" class="search" autocomplete="off" autocapitalize="off" spellcheck="false">
+                    <button type="button" class="icon-btn small ghost" id="dictClear" aria-label="Ryd">✕</button>
+                </div>
+                <label class="toggle" id="dictStripRow"><input type="checkbox" id="dictStrip" checked><span>Fjern vokaltegn (tashkil) ved opslag</span></label>
+                <p class="note" id="dictSearchHint"></p>
+                <div class="dict-history" id="dictHistory"></div>
+                <div class="dict-list" id="dictCards"></div>
+            </div>
+
+            <!-- Liste -->
+            <div id="dictListMode" hidden>
+                <div class="field" id="arSourceRow" hidden>
+                    <label for="arSource">Ordbog</label>
+                    <select id="arSource"></select>
+                </div>
+                <p class="note" id="dictHint"></p>
+            </div>
+        </section>
+        <div id="dictListTop"></div>
+        <div class="fast-scroll" id="fastScroll" hidden aria-hidden="true">
+            <div class="fs-thumb" id="fsThumb"></div>
+        </div>
+        <section class="card dict-list-card" id="dictListCard">
+            <div id="dictList"></div>
+        </section>
+        <p class="note center">Arabisk: Koranens rødder (Quranic Arabic Corpus) og klassiske ordbøgers opslagsord (The Arabic Lexicon). Andre sprog: frie ordlister fra LibreOffice og CC-CEDICT.</p>
+    </main>
+
+    <!-- ===================== Qibla ===================== -->
+    <main class="container page" id="page-qibla" hidden>
+        <section class="card qibla-card">
+            <div class="loc-banner" id="qiblaLocBanner" hidden>
+                <div class="loc-banner-icon" aria-hidden="true">📍</div>
+                <div class="loc-banner-text" id="qiblaLocMsg"></div>
+                <button class="btn btn-primary btn-block" id="qiblaEnableBtn">📍 Slå placering til</button>
+            </div>
+            <div class="compass-wrap">
+                <div class="compass" id="compass">
+                    <div class="dial" id="compassDial">
+                        <span class="cardinal n">N</span><span class="cardinal e">Ø</span><span class="cardinal s">S</span><span class="cardinal w">V</span>
+                        <div class="qibla-marker" id="qiblaMarker"><span class="kaaba" aria-hidden="true"></span></div>
+                    </div>
+                    <div class="needle" aria-hidden="true"></div>
+                    <div class="hub" aria-hidden="true"></div>
+                </div>
+            </div>
+            <div class="qibla-info">
+                <div class="qibla-big" id="qiblaStatus">Finder din placering…</div>
+                <div class="qibla-grid">
+                    <div><small>Qibla-retning</small><b id="qiblaBearing">–</b></div>
+                    <div><small>Telefonen peger</small><b id="qiblaHeading">–</b></div>
+                    <div><small>Afstand til Kaabaen</small><b id="qiblaDistance">–</b></div>
+                </div>
+                <div class="note" id="qiblaLocation"></div>
+                <div class="note">Hold telefonen fladt og væk fra metal og magneter. Er kompasset upræcist, så bevæg telefonen i et 8-tal for at kalibrere det.</div>
+                <button class="btn btn-ghost btn-block" id="qiblaRetryBtn">↻ Opdatér placering</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Indstillinger -->
+    <div class="sheet-backdrop" id="settingsBackdrop" hidden></div>
+    <aside class="sheet" id="settingsSheet" hidden aria-label="Indstillinger">
+        <div class="sheet-handle"></div>
+        <h2>Indstillinger</h2>
+        <div class="field">
+            <label for="targetLang">Sprog for maskinoversættelse</label>
+            <select id="targetLang"></select>
+        </div>
+        <label class="toggle"><input type="checkbox" id="allahCheck" checked><span>Skriv "Allah" i stedet for "Gud"</span></label>
+        <label class="toggle"><input type="checkbox" id="autoTafsirCheck" checked><span>Hent tafsir automatisk når verset vises</span></label>
+        <label class="toggle"><input type="checkbox" id="autoTranslateTafsirCheck"><span>Oversæt tafsir automatisk</span></label>
+        <div class="field">
+            <label for="themeSelect">Tema</label>
+            <select id="themeSelect">
+                <option value="auto">Automatisk</option>
+                <option value="light">Lyst</option>
+                <option value="dark">Mørkt</option>
+            </select>
+        </div>
+        <p class="note">Oversættelse sker gratis via Google Translate (kræver internet). Den indbyggede engelske oversættelse (Sahih International) virker uden internet.</p>
+        <button class="btn btn-primary btn-block" id="closeSettingsBtn">Luk</button>
+    </aside>
+
+    <!-- Spørg AI -->
+    <aside class="sheet" id="aiSheet" hidden aria-label="Spørg AI">
+        <div class="sheet-handle"></div>
+        <h2 id="aiSheetTitle">✨ Spørg AI om tafsiren</h2>
+        <div class="field">
+            <label for="aiTask">Hvad skal AI'en gøre?</label>
+            <select id="aiTask">
+                <option value="translate">Oversæt hele tafsiren</option>
+                <option value="explain">Forklar kort og enkelt</option>
+                <option value="lessons">Forklar og giv de vigtigste lærdomme</option>
+                <option value="words">Forklar svære ord og begreber</option>
+            </select>
+        </div>
+        <label class="toggle" id="aiIncludeVerseRow"><input type="checkbox" id="aiIncludeVerse" checked><span>Medtag verset (arabisk + engelsk)</span></label>
+        <div class="ai-grid">
+            <button type="button" class="ai-choice" data-ai="chatgpt"><span class="ai-dot" style="background:#10a37f">G</span>ChatGPT</button>
+            <button type="button" class="ai-choice" data-ai="deepseek"><span class="ai-dot" style="background:#4d6bfe">D</span>DeepSeek</button>
+            <button type="button" class="ai-choice" data-ai="claude"><span class="ai-dot" style="background:#d97757">C</span>Claude</button>
+            <button type="button" class="ai-choice" data-ai="gemini"><span class="ai-dot" style="background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570)">✦</span>Gemini</button>
+        </div>
+        <button type="button" class="btn btn-ghost btn-block" data-ai="other" id="aiOtherBtn">Andre apps (Del-menu)…</button>
+        <p class="note">Teksten sendes til den valgte app, og den kopieres også, så du kan sætte den ind, hvis appen ikke udfylder den selv. Er appen ikke installeret, åbnes hjemmesiden i stedet.</p>
+        <button class="btn btn-primary btn-block" id="closeAiBtn">Luk</button>
+    </aside>
+
+    <!-- Gem i noter -->
+    <aside class="sheet" id="saveSheet" hidden aria-label="Gem i noter">
+        <div class="sheet-handle"></div>
+        <h2 id="saveSheetTitle">☆ Gem i noter</h2>
+        <div class="save-preview" id="savePreview"></div>
+        <div class="field">
+            <label for="saveComment">Kommentar (valgfri)</label>
+            <textarea id="saveComment" rows="2" placeholder="Fx hvorfor du gemmer det…"></textarea>
+        </div>
+        <div class="field-label">Vælg kategori</div>
+        <div class="cat-picker" id="catPicker"></div>
+        <button class="btn btn-ghost btn-block" id="saveNewCatBtn">＋ Ny kategori</button>
+        <button class="btn btn-primary btn-block" id="saveConfirmBtn" disabled>Gem</button>
+        <button class="btn btn-ghost btn-block" id="saveCancelBtn">Annullér</button>
+    </aside>
+
+    <!-- Generel dialog -->
+    <aside class="sheet dialog" id="dialogSheet" hidden role="dialog">
+        <h2 id="dialogTitle"></h2>
+        <p class="dialog-msg" id="dialogMsg"></p>
+        <input type="text" id="dialogInput" class="dialog-input">
+        <textarea id="dialogTextarea" class="dialog-input" rows="6"></textarea>
+        <div class="dialog-actions">
+            <button class="btn btn-ghost" id="dialogCancel">Annullér</button>
+            <button class="btn btn-primary" id="dialogOk">OK</button>
+        </div>
+    </aside>
+
+    <!-- Valgmenu (handlinger) -->
+    <aside class="sheet" id="actionSheet" hidden>
+        <div class="sheet-handle"></div>
+        <h2 id="actionTitle"></h2>
+        <div class="action-list" id="actionList"></div>
+    </aside>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="config.js"></script>
+    <script src="quran-data.js"></script>
+    <script src="tafsir-list.js"></script>
+    <script src="tafsir-names-da.js"></script>
+    <script src="app.js"></script>
+    <script src="ui.js"></script>
+    <script src="tts.js"></script>
+    <script src="notes.js"></script>
+    <script src="quiz.js"></script>
+    <script src="hadith-books.js"></script>
+    <script src="hadith.js"></script>
+    <script src="sharh.js"></script>
+    <script src="qibla.js"></script>
+    <script src="wordlists.js"></script>
+    <script src="ar-dict-index.js"></script>
+    <script src="dict.js"></script>
+    <script src="dict-ui.js"></script>
+    <script src="srs.js"></script>
+    <script src="listen.js"></script>
+    <script src="search.js"></script>
+    <script src="asbab.js"></script>
+    <script src="calendar.js"></script>
+    <script src="adhkar-data.js"></script>
+    <script src="adhkar.js"></script>
+    <script src="pages.js"></script>
+    <script src="web.js"></script>
+</body>
+</html>

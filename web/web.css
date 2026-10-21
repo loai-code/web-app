@@ -1,0 +1,32 @@
+/* Kun i web-appen: plads til iPhonens statuslinje, "notch" og hjem-linje */
+.app-header { padding-top: env(safe-area-inset-top); }
+.header-inner { padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+body { padding-bottom: env(safe-area-inset-bottom); }
+.sheet { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+.toast { bottom: calc(24px + env(safe-area-inset-bottom)); }
+
+/* Undgå at iPhone zoomer ind, når man trykker i et tekstfelt (kræver mindst 16px) */
+input, select, textarea { font-size: max(16px, 1em); }
+
+/* Ingen grå blink ved tryk og ingen "træk ned for at genindlæse" i den installerede app */
+* { -webkit-tap-highlight-color: transparent; }
+.is-standalone body { overscroll-behavior-y: none; }
+
+/* Bannere: installér / ny version */
+.web-banner {
+    position: fixed; left: 12px; right: 12px; z-index: 25;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    max-width: 560px; margin: 0 auto;
+    display: flex; align-items: center; gap: 10px;
+    background: var(--paper); color: var(--ink);
+    border: 1px solid var(--line); border-top: 3px solid var(--gold); border-radius: 16px;
+    padding: 12px 12px 12px 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    font-size: 0.92rem;
+}
+.web-banner > :first-child { flex: 1; min-width: 0; }
+.web-banner ol { margin: 6px 0 0; padding-left: 20px; }
+.web-banner li { margin: 2px 0; }
+.web-banner .share-ico {
+    display: inline-block; font-size: 0.8rem; line-height: 1; padding: 1px 4px;
+    border: 1.5px solid currentColor; border-radius: 4px; color: var(--blue-600);
+}
