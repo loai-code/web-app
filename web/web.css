@@ -30,3 +30,6 @@ input, select, textarea { font-size: max(16px, 1em); }
     display: inline-block; font-size: 0.8rem; line-height: 1; padding: 1px 4px;
     border: 1.5px solid currentColor; border-radius: 4px; color: var(--blue-600);
 }
+
+/* Kun web-versionen: ingen "Oversæt til dansk"-knap ved tafsir på memoreringssiden */
+#translateTafsirBtn { display: none !important; }
