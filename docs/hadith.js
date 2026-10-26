@@ -70,7 +70,8 @@ function renderHadith() {
     const st = hState();
     const run = hNav.src === 'topics'
         ? (st.level === 'root' ? renderTopicsRoot : st.level === 'cat' ? renderTopicCat : renderHencHadith)
-        : (st.level === 'root' ? renderBooksRoot : st.level === 'book' ? renderBook : st.level === 'sharh' ? renderSharh : renderSection);
+        : ((typeof MORE_LEVELS !== 'undefined' && MORE_LEVELS[st.level]) // flere værker (hadith-more.js)
+            || (st.level === 'root' ? renderBooksRoot : st.level === 'book' ? renderBook : st.level === 'sharh' ? renderSharh : renderSection));
     run(st, token).catch(err => {
         if (token !== hRenderToken) return;
         hadithView.innerHTML = '';
@@ -287,6 +288,7 @@ async function renderBooksRoot() {
             el('span', { class: 'chev' }, '›')));
     }
     hadithView.appendChild(list);
+    if (typeof renderMoreBooks === 'function') renderMoreBooks(hadithView);
 }
 
 async function renderBook(st, token) {
@@ -382,7 +384,9 @@ function bookHadithCard(book, { ar, en }) {
         ], 'btn btn-small btn-gold'),
         trBtn,
         el('button', { type: 'button', class: 'btn btn-small btn-ghost', onclick: () => copyText(`${ref}\n\n${ar.text}\n\n${en ? en.text : ''}`) }, '⧉ Kopiér'),
-        el('button', { type: 'button', class: 'btn btn-small btn-gold sharh-btn', onclick: () => openSharhChooser(book, num, ar.arabicnumber, ar.text) }, '📜 Sharh'),
+        (SHARH_WORKS[book.id] || []).length
+            ? el('button', { type: 'button', class: 'btn btn-small btn-gold sharh-btn', onclick: () => openSharhChooser(book, num, ar.arabicnumber, ar.text) }, '📜 Sharh')
+            : null,
         el('button', { type: 'button', class: 'btn btn-small btn-ai', onclick: () => openAiSheet({
             kind: 'hadith', ref, srcLang: 'ar', sourceName: book.name,
             body: ar.text + (en && en.text ? `\n\nEngelsk oversættelse: ${en.text}` : '')

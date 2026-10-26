@@ -359,7 +359,9 @@ function populateSurahs() {
 function populateTranslations() {
     translationSelect.innerHTML = '';
     const lang = LANG_NAME[settings.targetLang] || settings.targetLang;
-    const groups = [
+    // Web-appen kan nøjes med den indbyggede oversættelse (APP_CONFIG.builtinTranslationOnly i web-app/web/config.js)
+    const onlyBuiltin = !!(window.APP_CONFIG && APP_CONFIG.builtinTranslationOnly);
+    const groups = onlyBuiltin ? [['Indbygget', [['builtin', 'Engelsk – Sahih International (offline)']]]] : [
         ['Indbygget', [['builtin', 'Engelsk – Sahih International (offline)']]],
         ['Maskinoversat (Google)', [
             ['mt-en', `${lang} – maskinoversat fra engelsk (anbefalet)`],
@@ -379,7 +381,7 @@ function populateTranslations() {
         translationSelect.appendChild(og);
     }
     translationSelect.value = settings.translation;
-    if (!translationSelect.value) translationSelect.value = 'mt-en';
+    if (!translationSelect.value) translationSelect.value = onlyBuiltin ? 'builtin' : 'mt-en';
 }
 
 // "Ibn Kathir – Fortolkning af den storslåede Koran · تفسير القرآن العظيم/ ابن كثير (ت 774 هـ)"
