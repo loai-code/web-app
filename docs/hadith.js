@@ -221,7 +221,7 @@ async function renderHencHadith(st, token) {
 
     const plainAr = `${ar.title}\n\n${ar.hadeeth}\n\n${ar.attribution || ''} – ${ar.grade || ''}\n\nالشرح:\n${ar.explanation || ''}`;
     const mtBox = el('div', { class: 'item-mt', hidden: true });
-    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold' }, local ? 'Maskinoversæt arabisk' : `Oversæt til ${(LANG_NAME[lang] || lang).toLowerCase()}`);
+    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold tr-btn' }, local ? 'Maskinoversæt arabisk' : `Oversæt til ${(LANG_NAME[lang] || lang).toLowerCase()}`);
     trBtn.addEventListener('click', () => translateInto(mtBox, `${ar.hadeeth}\n\n${ar.explanation || ''}`, 'ar', trBtn));
     const listenBtn = listenButton(() => [
         { icon: '📖', label: 'Hadith på arabisk', text: ar.hadeeth, lang: 'ar' },
@@ -371,7 +371,7 @@ function bookHadithCard(book, { ar, en }) {
         card.appendChild(el('div', { class: 'hadith-meta' }, grades.map(g => el('span', { class: 'grade' }, `${g.grade} (${g.name})`))));
     }
     const mtBox = el('div', { class: 'item-mt', hidden: true });
-    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold' }, 'Oversæt');
+    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold tr-btn' }, 'Oversæt');
     trBtn.addEventListener('click', () => translateInto(mtBox, en && en.text ? en.text : ar.text, en && en.text ? 'en' : 'ar', trBtn));
     const ref = `${book.name} ${num}`;
     const hasEn = !!(en && en.text);

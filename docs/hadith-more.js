@@ -428,7 +428,7 @@ function shHadithCard(book, page, b) {
         null));
     card.appendChild(el('div', { class: 'hadith-ar', dir: 'rtl', lang: 'ar' }, b.text));
     const mtBox = el('div', { class: 'item-mt', hidden: true });
-    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold' }, 'Oversæt');
+    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold tr-btn' }, 'Oversæt');
     trBtn.addEventListener('click', () => translateInto(mtBox, b.text, 'ar', trBtn));
     card.appendChild(el('div', { class: 'tafsir-actions' },
         listenButton(() => [

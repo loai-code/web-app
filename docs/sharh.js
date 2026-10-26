@@ -221,7 +221,7 @@ async function renderSharh(st, token) {
 
     const fullText = () => [...textBox.querySelectorAll('.sharh-page')].map(d => d.textContent).join('\n\n');
     const mtBox = el('div', { class: 'item-mt', hidden: true });
-    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold' }, `Oversæt til ${(LANG_NAME[settings.targetLang] || 'dansk').toLowerCase()}`);
+    const trBtn = el('button', { type: 'button', class: 'btn btn-small btn-gold tr-btn' }, `Oversæt til ${(LANG_NAME[settings.targetLang] || 'dansk').toLowerCase()}`);
     trBtn.addEventListener('click', () => translateInto(mtBox, fullText(), 'ar', trBtn));
     const moreBtn = el('button', { type: 'button', class: 'btn btn-small btn-ghost' }, 'Næste side ›');
     moreBtn.addEventListener('click', async () => {

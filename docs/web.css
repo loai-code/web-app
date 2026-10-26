@@ -33,3 +33,6 @@ input, select, textarea { font-size: max(16px, 1em); }
 
 /* Kun web-versionen: ingen "Oversæt til dansk"-knap ved tafsir på memoreringssiden */
 #translateTafsirBtn { display: none !important; }
+
+/* Kun web-versionen: ingen Oversæt-knapper i hadith-afsnittet */
+#page-hadith .tr-btn { display: none !important; }
