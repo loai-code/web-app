@@ -13,6 +13,13 @@
 const HJ_CDN = 'https://cdn.jsdelivr.net/gh/AhmedBaset/hadith-json@main/db/by_chapter/';
 const HJ_RAW = 'https://raw.githubusercontent.com/AhmedBaset/hadith-json/main/db/by_chapter/';
 
+// Alle samlinger med engelsk: hadith-json + de to fra sunnah.com (sunnah-extra.js, ligger i appen)
+function enBooks() {
+    const sn = typeof SUNNAH_BOOKS !== 'undefined' ? SUNNAH_BOOKS : [];
+    const i = HJ_BOOKS.findIndex(b => b.id === 'hj-darimi');
+    return [...HJ_BOOKS.slice(0, i), ...sn, ...HJ_BOOKS.slice(i)];
+}
+
 const MORE_LEVELS = {
     hjbook: renderHjBook,
     hjsec: renderHjSection,
@@ -40,7 +47,7 @@ function renderMoreBooks(view) {
         const q = normText(search.value.trim());
         const hit = (...parts) => !q || matchesQuery(normText(parts.join(' ')), q);
 
-        const hj = HJ_BOOKS.filter(b => hit(b.name, b.ar, b.author));
+        const hj = enBooks().filter(b => hit(b.name, b.ar, b.author));
         if (hj.length) {
             box.appendChild(el('h3', { class: 'list-head' }, 'Flere samlinger – arabisk og engelsk'));
             const list = el('div', { class: 'list' });
@@ -71,14 +78,14 @@ function renderMoreBooks(view) {
 
 // ---------------- 1) Værker med engelsk (hadith-json) ----------------
 
-const hjBook = id => HJ_BOOKS.find(b => b.id === id);
+const hjBook = id => enBooks().find(b => b.id === id);
 const hjNameCache = store.get('hjChapterNames', {});
 
 async function renderHjBook(st, token) {
     const book = hjBook(st.book);
     hadithView.append(
         el('h3', { class: 'list-head' }, el('span', {}, book.name), ' ', el('span', { class: 'list-ar', dir: 'rtl' }, book.ar)),
-        el('p', { class: 'note' }, `${book.author} · ${book.total} hadith med arabisk og engelsk (sunnah.com).`));
+        el('p', { class: 'note' }, `${book.author.replace(/ · sunnah\.com$/, '')} · ${book.total} numre med arabisk og engelsk (sunnah.com).`));
     const list = el('div', { class: 'list' });
     const rows = book.sections.map(([id, en, ar, count, first], i) => {
         const title = el('span', { class: 'list-title' }, `${i + 1}. ${en || ar}`);
@@ -118,6 +125,7 @@ async function renderHjBook(st, token) {
 async function renderHjSection(st, token) {
     const book = hjBook(st.book);
     const sec = book.sections.find(s => s[0] === st.sec);
+    if (book.local) { renderLocalSection(book, sec, st); return; }
     hadithView.appendChild(spinnerLine('Henter hadith…'));
     // Kapitel 0 (hadith uden kapitelnavn) findes kun i den samlede bogfil
     const path = st.sec === 0 ? null : `${book.path}/${st.sec}.json`;
@@ -138,6 +146,20 @@ async function renderHjSection(st, token) {
         return { ar: { hadithnumber: n, arabicnumber: n, text: (h.arabic || '').trim(), grades: [] }, en: en ? { text: en, grades: [] } : null };
     }).filter(x => x.ar.text);
 
+    showChapterList(book, sec, st, all);
+}
+
+// Samlinger der ligger i appen (Hisn al-Muslim, Fada'il al-Ayat): [kapitel, nr., arabisk, engelsk, kilde, translitteration]
+function renderLocalSection(book, sec, st) {
+    const all = book.hadiths.filter(h => h[0] === st.sec).map(([, n, ar, en, ref, tr]) => {
+        const text = [tr ? 'Udtale: ' + tr : '', en, ref ? `(Kilde: ${ref})` : ''].filter(Boolean).join('\n\n');
+        return { ar: { hadithnumber: n, arabicnumber: n, text: ar, grades: [] }, en: { text, grades: [] } };
+    });
+    showChapterList(book, sec, st, all);
+}
+
+function showChapterList(book, sec, st, all) {
+    const like = { id: book.id, name: book.name };
     hadithView.appendChild(el('h3', { class: 'list-head' }, `${book.name} · ${sec ? (sec[1] || sec[2]) : ''}`));
     const filter = el('input', { type: 'search', class: 'search', placeholder: 'Søg i dette kapitel (arabisk eller engelsk)…' });
     const listBox = el('div', {});

@@ -402,7 +402,10 @@ function bookHadithCard(book, { ar, en }) {
 // =================================================================
 // Søgning i hadith
 //  - HadeethEnc: alle titler (arabisk + valgt sprog) hentes én gang og gemmes på telefonen
-//  - Samlinger: søgning kapitel for kapitel i en hel samling (arabisk + engelsk tekst)
+//  - Hisn al-Muslim og Fada'il al-Ayat: teksten ligger i appen
+//  - Arabiske værker: Shamela's egen søgning i alle 54 værker på én gang
+//  - Samlinger: søgning kapitel for kapitel i én eller alle samlinger (arabisk + engelsk tekst)
+//  Skriver man på dansk, oversættes søgeordet til engelsk og arabisk.
 // =================================================================
 
 const HENC_INDEX_MAX_AGE = 7 * 24 * 3600 * 1000;
@@ -441,6 +444,16 @@ function setHadithSearchMode(on) {
     $('hadithBrowse').hidden = on;
 }
 
+// Søgeordet på de sprog, kilderne er skrevet på. Skriver man dansk (eller andet), oversættes det
+// til engelsk (samlingernes oversættelse) og arabisk (Shamela-værkerne).
+async function searchTerms(raw) {
+    if (hasArabic(raw)) return { ar: raw, en: null, extra: null };
+    let en = raw, ar = null;
+    try { en = (await translateText(raw, 'auto', 'en')).trim() || raw; } catch (e) { en = raw; }
+    try { ar = (await translateText(raw, 'auto', 'ar')).trim() || null; } catch (e) { ar = null; }
+    return { ar, en, extra: [en !== raw ? `engelsk: "${en}"` : '', ar ? `arabisk: "${ar}"` : ''].filter(Boolean).join(', ') };
+}
+
 async function runHadithSearch() {
     const raw = $('hadithSearch').value.trim();
     bookSearchToken++;
@@ -448,81 +461,224 @@ async function runHadithSearch() {
     setHadithSearchMode(true);
     const box = $('hadithResults');
     box.innerHTML = '';
+    const token = bookSearchToken;
     const q = normText(raw);
+    const termsBox = el('p', { class: 'note' });
+    box.appendChild(termsBox);
+    const termsP = searchTerms(raw).then(t => {
+        if (t.extra && token === bookSearchToken) termsBox.textContent = `Søger også efter ${t.extra}.`;
+        return t;
+    });
+    // Et match: alle ord fra det man skrev – eller fra den engelske/arabiske udgave af søgeordet
+    const matcher = t => {
+        const qs = [q, t.en && normText(t.en), t.ar && normText(t.ar)].filter(Boolean);
+        return text => { const n = normText(text); return qs.some(x => matchesQuery(n, x)); };
+    };
 
-    // --- HadeethEnc ---
+    // --- 1) HadeethEnc (titler) ---
     const hencBox = el('div', {});
-    box.appendChild(el('h3', { class: 'list-head' }, 'Emner · HadeethEnc'));
-    box.appendChild(hencBox);
+    box.append(el('h3', { class: 'list-head' }, 'Emner · HadeethEnc'), hencBox);
     hencBox.appendChild(spinnerLine('Henter hadith-oversigt (kun første gang)…'));
-    try {
-        const items = await loadHencIndex((i, n) => {
-            hencBox.innerHTML = '';
-            hencBox.appendChild(spinnerLine(`Henter hadith-oversigt (kun første gang)… ${i}/${n}`));
-        });
+    const hencDone = loadHencIndex((i, n) => {
+        hencBox.innerHTML = '';
+        hencBox.appendChild(spinnerLine(`Henter hadith-oversigt (kun første gang)… ${i}/${n}`));
+    }).then(items => {
         hencBox.innerHTML = '';
         const hits = items.filter(([, ar, loc]) => matchesQuery(normText(ar + ' ' + loc), q));
         hencBox.appendChild(el('p', { class: 'note' }, `${hits.length} hadith fundet i titlerne.`));
         const list = el('div', { class: 'list' });
-        hits.slice(0, 60).forEach(([id, ar, loc]) => list.appendChild(el('button', {
+        hits.slice(0, 40).forEach(([id, ar, loc]) => list.appendChild(el('button', {
             type: 'button', class: 'list-row', onclick: () => openHencFromSearch(id)
         }, el('span', { class: 'list-main' },
             loc ? el('span', { class: 'list-title' }, loc) : null,
             el('span', { class: 'list-ar big', dir: 'rtl' }, ar)),
         el('span', { class: 'chev' }, '›'))));
         hencBox.appendChild(list);
-        if (hits.length > 60) hencBox.appendChild(el('p', { class: 'note' }, `Viser 60 af ${hits.length} – tilføj flere ord for at indsnævre.`));
-    } catch (err) {
+        if (hits.length > 40) hencBox.appendChild(el('p', { class: 'note' }, `Viser 40 af ${hits.length} – tilføj flere ord for at indsnævre.`));
+    }).catch(err => {
         hencBox.innerHTML = '';
         hencBox.appendChild(el('div', { class: 'status error' }, '⚠ Kunne ikke hente oversigten: ' + err.message));
-    }
+    });
 
-    // --- Samlinger ---
-    box.appendChild(el('h3', { class: 'list-head' }, 'Samlinger (fuld tekst)'));
+    // --- 2) Samlinger i appen (Hisn al-Muslim, Fada'il al-Ayat) – med det samme ---
+    const localBox = el('div', {});
+    box.append(el('h3', { class: 'list-head' }, 'Hisn al-Muslim og Fada\'il al-Ayat was-Suwar'), localBox);
+    // --- 3) Klassiske arabiske værker (Shamela) ---
+    const shBox = el('div', {});
+    box.append(el('h3', { class: 'list-head' }, 'Klassiske værker på arabisk · al-Maktaba ash-Shamila'), shBox);
+    // --- 4) Fuld tekst i samlingerne med engelsk ---
+    box.appendChild(el('h3', { class: 'list-head' }, 'Samlinger med arabisk og engelsk (fuld tekst)'));
     const sel = el('select', {});
-    HADITH_BOOKS.forEach(b => sel.appendChild(el('option', { value: b.id }, `${b.name} · ${b.ar}`)));
+    sel.appendChild(el('option', { value: 'all' }, 'Alle samlinger (stor download første gang)'));
+    const og1 = el('optgroup', { label: 'De seks bøger m.fl.' });
+    HADITH_BOOKS.forEach(b => og1.appendChild(el('option', { value: b.id }, `${b.name} · ${b.ar}`)));
+    const og2 = el('optgroup', { label: 'Flere samlinger' });
+    HJ_BOOKS.forEach(b => og2.appendChild(el('option', { value: b.id }, `${b.name} · ${b.ar}`)));
+    sel.append(og1, og2);
     sel.value = store.get('hadithSearchBook', 'bukhari');
-    const btn = el('button', { type: 'button', class: 'btn btn-small btn-gold' }, 'Søg i hele samlingen');
+    if (!sel.value) sel.value = 'bukhari';
+    const btn = el('button', { type: 'button', class: 'btn btn-small btn-gold' }, 'Søg i fuld tekst');
     const bookBox = el('div', {});
-    box.appendChild(el('div', { class: 'row' }, el('div', { class: 'field' }, sel), btn));
-    box.appendChild(el('p', { class: 'note' }, 'Søger i arabisk og engelsk tekst. De store samlinger hentes kapitel for kapitel (Bukhari ca. 14 MB) – brug gerne wi-fi.'));
-    box.appendChild(bookBox);
-    btn.addEventListener('click', () => { store.set('hadithSearchBook', sel.value); searchBook(sel.value, q, bookBox, btn); });
+    box.append(el('div', { class: 'row' }, el('div', { class: 'field' }, sel), btn),
+        el('p', { class: 'note' }, 'Søger i den arabiske og engelske tekst. Teksten hentes kapitel for kapitel (Bukhari ca. 14 MB, alle samlinger ca. 100 MB) – brug gerne wi-fi.'),
+        bookBox);
+
+    const t = await termsP;
+    if (token !== bookSearchToken) return;
+    const match = matcher(t);
+    btn.addEventListener('click', () => {
+        store.set('hadithSearchBook', sel.value);
+        const ids = sel.value === 'all' ? [...HADITH_BOOKS.map(b => b.id), ...HJ_BOOKS.map(b => b.id)] : [sel.value];
+        searchCollections(ids, match, bookBox, btn);
+    });
+
+    // Hisn al-Muslim og Fada'il (tekst i appen)
+    const localHits = [];
+    for (const b of (typeof SUNNAH_BOOKS !== 'undefined' ? SUNNAH_BOOKS : [])) {
+        const secName = new Map(b.sections.map(x => [x[0], x[1] + ' ' + x[2]]));
+        // kapiteltitlen tæller med (fx "Chapter: What to say before sleeping")
+        for (const h of b.hadiths) if (match([h[2], h[3], h[5] || '', secName.get(h[0]) || ''].join(' '))) localHits.push([b, h]);
+    }
+    localBox.appendChild(el('p', { class: 'note' }, localHits.length ? `${localHits.length} fundet.` : 'Ingen fundet.'));
+    localHits.slice(0, 20).forEach(([b, [, n, ar, en, ref, tr]]) => {
+        const text = [tr ? 'Udtale: ' + tr : '', en, ref ? `(Kilde: ${ref})` : ''].filter(Boolean).join('\n\n');
+        localBox.appendChild(bookHadithCard({ id: b.id, name: b.name }, { ar: { hadithnumber: n, arabicnumber: n, text: ar, grades: [] }, en: { text, grades: [] } }));
+    });
+    if (localHits.length > 20) localBox.appendChild(el('p', { class: 'note' }, `Viser 20 af ${localHits.length}.`));
+
+    // Shamela-søgning (arabisk) i alle 54 værker på én gang
+    if (t.ar) searchShamela(t.ar, shBox, 1, token);
+    else shBox.appendChild(el('p', { class: 'note' }, 'Skriv på arabisk for at søge i de arabiske værker.'));
+    await hencDone;
 }
 
-async function searchBook(bookId, q, box, btn) {
+// Shamela's egen søgning – 10 resultater ad gangen, med uddrag, bind og side
+async function searchShamela(term, box, page, token) {
+    const more = box.querySelector('.sh-more');
+    if (more) more.remove();
+    const spin = spinnerLine(page === 1 ? 'Søger i de arabiske værker…' : 'Henter flere…');
+    box.appendChild(spin);
+    const body = new URLSearchParams([['term', term], ...SHAMELA_HADITH.map(b => ['books[]', String(b.id)]), ['page', String(page)]]).toString();
+    try {
+        const html = await httpRequest('https://shamela.ws/ajax/search', { method: 'POST', body, noCache: true });
+        if (token !== bookSearchToken) return;
+        spin.remove();
+        const doc = new DOMParser().parseFromString(`<div id="r">${html}</div>`, 'text/html');
+        const root = doc.getElementById('r');
+        // Shamela giver 10 resultater ad gangen og en "flere"-knap, men intet samlet antal
+        const results = [...root.querySelectorAll('.srch-page-ref')];
+        const hasMore = !!root.querySelector('#bu_srch_more');
+        if (page === 1) box.appendChild(el('p', { class: 'note' }, results.length ? (hasMore ? 'Mange steder fundet – de mest relevante først.' : `${results.length} steder fundet.`) : 'Ingen fundet.'));
+        for (const refEl of results) {
+            const head = refEl.parentElement;
+            const a = head.querySelector('a[href*="/book/"]');
+            const m = a && a.getAttribute('href').match(/\/book\/(\d+)\/(\d+)/);
+            if (!m) continue;
+            const [, id, pg] = m;
+            const book = SHAMELA_HADITH.find(b => b.id === Number(id));
+            if (!book) continue;
+            const ref = refEl;
+            let snip = head.nextElementSibling;
+            while (snip && !snip.classList.contains('srch-snippet') && snip.tagName !== 'DIV') snip = snip.nextElementSibling;
+            if (snip && !snip.classList.contains('srch-snippet')) snip = null;
+            const fromFoot = !!(snip && snip.querySelector('.srch-footnote-badge'));
+            const textEl = snip && (snip.querySelector('.srch-snippet-text') || snip);
+            const row = el('button', {
+                type: 'button', class: 'list-row sh-hit', onclick: () => openShamelaFromSearch(book.id, Number(pg))
+            }, el('span', { class: 'list-main' },
+                el('span', { class: 'list-title' }, book.name),
+                el('span', { class: 'list-sub' }, [ref ? ref.textContent.trim() : `side ${pg}`, fromFoot ? 'i fodnoterne' : ''].filter(Boolean).join(' · ')),
+                textEl ? el('span', { class: 'list-ar sh-snip', dir: 'rtl' }) : null),
+            el('span', { class: 'chev' }, '›'));
+            // Uddraget med søgeordene fremhævet (<em> fra Shamela)
+            if (textEl) {
+                const target = row.querySelector('.sh-snip');
+                textEl.childNodes.forEach(nd => target.appendChild(nd.nodeName === 'EM' ? el('mark', {}, nd.textContent) : document.createTextNode(nd.textContent)));
+            }
+            box.appendChild(row);
+        }
+        if (hasMore) {
+            box.appendChild(el('button', {
+                type: 'button', class: 'btn btn-ghost btn-block sh-more', onclick: () => searchShamela(term, box, page + 1, token)
+            }, 'Vis flere'));
+        }
+    } catch (err) {
+        spin.remove();
+        box.appendChild(el('div', { class: 'status error' }, '⚠ Kunne ikke søge i Shamela: ' + err.message));
+    }
+}
+
+function openShamelaFromSearch(id, page) {
+    setHadithSearchMode(false);
+    hNav.src = 'books';
+    $('hadithTabs').querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.src === 'books'));
+    const book = SHAMELA_HADITH.find(b => b.id === id);
+    hNav.books = [{ level: 'root' }, { level: 'shbook', book: id, label: book.name }];
+    hPush({ level: 'shpage', book: id, page, label: `Side ${page}` });
+}
+
+// Fuld tekst i en eller flere samlinger (de seks bøger m.fl. + hadith-json)
+async function searchCollections(ids, match, box, btn) {
     const token = ++bookSearchToken;
-    const book = HADITH_BOOKS.find(b => b.id === bookId);
     btn.disabled = true;
     box.innerHTML = '';
     const status = el('div', {});
     const list = el('div', {});
     box.append(status, list);
+    const MAX_SHOWN = ids.length > 1 ? 100 : 50;
     let found = 0;
+    const perBook = [];
+    const show = (book, x) => { found++; if (found <= MAX_SHOWN) list.appendChild(bookHadithCard(book, x)); };
+    const progress = (book, i, n) => {
+        status.innerHTML = '';
+        status.appendChild(spinnerLine(`Søger i ${book.name}: kapitel ${i} af ${n} – ${found} fundet`));
+    };
+    const json = url => httpRequest(url, { noCache: true }).then(JSON.parse);
     try {
-        for (let i = 0; i < book.sections.length; i++) {
-            if (token !== bookSearchToken) return;
-            const sec = book.sections[i];
-            status.innerHTML = '';
-            status.appendChild(spinnerLine(`Søger i ${book.name}: kapitel ${i + 1} af ${book.sections.length} – ${found} fundet`));
-            const [ara, eng] = await Promise.all([
-                getHadithApi(`ara-${book.id}/sections/${sec[0]}.json`),
-                getHadithApi(`eng-${book.id}/sections/${sec[0]}.json`).catch(() => null)
-            ]);
-            const engMap = new Map(((eng && eng.hadiths) || []).map(h => [h.hadithnumber, h]));
-            for (const h of ara.hadiths || []) {
-                if (!(h.text || '').trim()) continue;
-                const en = engMap.get(h.hadithnumber);
-                if (matchesQuery(normText(h.text + ' ' + (en ? en.text : '')), q)) {
-                    found++;
-                    if (found <= 50) list.appendChild(bookHadithCard(book, { ar: h, en }));
+        for (const id of ids) {
+            const before = found;
+            const fw = HADITH_BOOKS.find(b => b.id === id);
+            if (fw) {
+                for (let i = 0; i < fw.sections.length; i++) {
+                    if (token !== bookSearchToken) return;
+                    progress(fw, i + 1, fw.sections.length);
+                    const sec = fw.sections[i][0];
+                    const get = path => json(HADITH_API + path).catch(() => json(HADITH_API_FALLBACK + path));
+                    const [ara, eng] = await Promise.all([get(`ara-${fw.id}/sections/${sec}.json`), get(`eng-${fw.id}/sections/${sec}.json`).catch(() => null)]);
+                    const engMap = new Map(((eng && eng.hadiths) || []).map(h => [h.hadithnumber, h]));
+                    for (const h of ara.hadiths || []) {
+                        if (!(h.text || '').trim()) continue;
+                        const en = engMap.get(h.hadithnumber);
+                        if (match(h.text + ' ' + (en ? en.text : ''))) show(fw, { ar: h, en });
+                    }
+                }
+            } else {
+                const hj = HJ_BOOKS.find(b => b.id === id);
+                if (!hj) continue;
+                const like = { id: hj.id, name: hj.name };
+                for (let i = 0; i < hj.sections.length; i++) {
+                    if (token !== bookSearchToken) return;
+                    progress(hj, i + 1, hj.sections.length);
+                    const sec = hj.sections[i];
+                    const path = sec[0] === 0 ? null : `${hj.path}/${sec[0]}.json`;
+                    const load = base => path ? json(base + path) : json(base.replace('/by_chapter/', '/by_book/') + hj.path + '.json');
+                    const data = await load(HJ_CDN).catch(() => load(HJ_RAW));
+                    const items = (data.hadiths || []).filter(h => h.chapterId === sec[0]).sort((a, b) => a.idInBook - b.idInBook);
+                    items.forEach((h, j) => {
+                        const en = h.english ? [h.english.narrator, h.english.text].filter(Boolean).join(' ').trim() : '';
+                        if (!(h.arabic || '').trim() || !match(h.arabic + ' ' + en)) return;
+                        const n = sec[4] + j;
+                        show(like, { ar: { hadithnumber: n, arabicnumber: n, text: h.arabic.trim(), grades: [] }, en: en ? { text: en, grades: [] } : null });
+                    });
                 }
             }
+            perBook.push([(HADITH_BOOKS.find(b => b.id === id) || HJ_BOOKS.find(b => b.id === id)).name, found - before]);
         }
         status.innerHTML = '';
+        const summary = perBook.filter(([, n]) => n).map(([name, n]) => `${name}: ${n}`).join(' · ');
         status.appendChild(el('p', { class: 'note' }, found
-            ? `${found} hadith fundet i ${book.name}${found > 50 ? ' – viser de første 50' : ''}.`
-            : `Ingen hadith i ${book.name} matcher.`));
+            ? `${found} hadith fundet${found > MAX_SHOWN ? ` – viser de første ${MAX_SHOWN}` : ''}.${ids.length > 1 ? ' ' + summary : ''}`
+            : 'Ingen hadith matcher.'));
     } catch (err) {
         status.innerHTML = '';
         status.appendChild(el('div', { class: 'status error' }, '⚠ Søgningen blev afbrudt: ' + err.message));

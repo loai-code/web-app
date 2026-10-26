@@ -223,7 +223,7 @@ function httpRequest(url, opts = {}) {
     const body = opts.body || '';
     const charset = opts.charset || 'utf-8';
     const cacheKey = method + ' ' + url + ' ' + body;
-    if (cache.has(cacheKey)) return Promise.resolve(cache.get(cacheKey));
+    if (!opts.noCache && cache.has(cacheKey)) return Promise.resolve(cache.get(cacheKey));
 
     let promise;
     if (window.AndroidBridge && AndroidBridge.request) {
@@ -236,7 +236,7 @@ function httpRequest(url, opts = {}) {
         promise = webRequest(url, method, body, charset);
     }
     return promise.then(text => {
-        cache.set(cacheKey, text);
+        if (!opts.noCache) cache.set(cacheKey, text); // noCache: store søgninger skal ikke fylde hukommelsen
         return text;
     });
 }

@@ -569,3 +569,7 @@ textarea:focus, input[type="search"]:focus, .dialog-input:focus { outline: 2px s
 }
 .hadith-card.focus { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold-light); }
 .sh-foot { margin-top: 12px; }
+.sh-hit .list-main { gap: 4px; }
+.sh-snip { font-size: 1rem; line-height: 1.9; color: var(--ink); }
+.sh-snip mark { background: var(--gold-light); color: inherit; border-radius: 3px; padding: 0 2px; }
+.sh-hit { width: 100%; margin-bottom: 6px; }
