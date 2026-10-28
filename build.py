@@ -81,6 +81,7 @@ def main():
     for p in files:
         h.update(p.relative_to(OUT).as_posix().encode())
         h.update(p.read_bytes())
+    h.update((WEB / 'sw-template.js').read_bytes())  # ændringer i service workeren giver også en ny version
     version = h.hexdigest()[:12]
     precache = [p.relative_to(OUT).as_posix() for p in files if not LAZY.match(p.relative_to(OUT).as_posix())]
     sw = (WEB / 'sw-template.js').read_text(encoding='utf-8')
