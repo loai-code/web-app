@@ -24,6 +24,7 @@ const MORE_LEVELS = {
     hjbook: renderHjBook,
     hjsec: renderHjSection,
     shbook: renderShBook,
+    shtoc: renderShToc,
     shpage: renderShPage
 };
 
@@ -143,7 +144,7 @@ async function renderHjSection(st, token) {
     const all = items.map((h, i) => {
         const en = h.english ? [h.english.narrator, h.english.text].filter(Boolean).join(' ').trim() : '';
         const n = sec ? sec[4] + i : h.idInBook;
-        return { ar: { hadithnumber: n, arabicnumber: n, text: (h.arabic || '').trim(), grades: [] }, en: en ? { text: en, grades: [] } : null };
+        return { ar: { hadithnumber: n, arabicnumber: n, text: (h.arabic || '').trim(), grades: [] }, en: en ? { text: en, grades: [] } : null, pos: i + 1 };
     }).filter(x => x.ar.text);
 
     showChapterList(book, sec, st, all);
@@ -158,20 +159,27 @@ function renderLocalSection(book, sec, st) {
     showChapterList(book, sec, st, all);
 }
 
-function showChapterList(book, sec, st, all) {
+async function showChapterList(book, sec, st, all) {
+    const token = hRenderToken;
     const like = { id: book.id, name: book.name };
     hadithView.appendChild(el('h3', { class: 'list-head' }, `${book.name} · ${sec ? (sec[1] || sec[2]) : ''}`));
+    const indexBox = el('div', {});
     const filter = el('input', { type: 'search', class: 'search', placeholder: 'Søg i dette kapitel (arabisk eller engelsk)…' });
     const listBox = el('div', {});
-    hadithView.append(filter, listBox);
+    hadithView.append(indexBox, filter, listBox);
     const strip = s => s.replace(/[ً-ْٰـ]/g, '');
+    let babs = null; // { byPos: Map(pos → [kapitel]), list: [kapitel] }
     const draw = () => {
         listBox.innerHTML = '';
         const q = strip(filter.value.trim().toLowerCase());
         const matches = q ? all.filter(x => strip(x.ar.text).includes(q) || (x.en && x.en.text.toLowerCase().includes(q))) : all;
         const shown = matches.slice(0, st.shown || 30);
         if (!matches.length) listBox.appendChild(el('p', { class: 'note' }, 'Ingen hadith matcher søgningen.'));
-        shown.forEach(x => listBox.appendChild(bookHadithCard(like, x)));
+        shown.forEach(x => {
+            // Kapiteloverskrifter (abwab) før den første hadith i kapitlet – ikke mens man søger
+            if (!q && babs && x.pos && babs.byPos.has(x.pos)) babs.byPos.get(x.pos).forEach(b => listBox.appendChild(babHeading(b)));
+            listBox.appendChild(bookHadithCard(like, x));
+        });
         if (matches.length > shown.length) {
             listBox.appendChild(el('button', {
                 type: 'button', class: 'btn btn-ghost btn-block', onclick: () => { st.shown = (st.shown || 30) + 30; draw(); }
@@ -181,6 +189,84 @@ function showChapterList(book, sec, st, all) {
     let t = null;
     filter.addEventListener('input', () => { clearTimeout(t); t = setTimeout(draw, 250); });
     draw();
+
+    // Hent kapitlerne for bogen (sunnah.com) og vis dem i listen + som indholdsfortegnelse
+    if (!sec || !all.some(x => x.pos)) return;
+    const data = await loadBabs(book.id);
+    const arr = data && data[String(sec[0])];
+    if (!arr || !arr.length || token !== hRenderToken) return;
+    const list = arr.map(([pos, en, ar, no], i) => ({ pos, en: en.replace(/^Chapter:\s*/i, '').trim(), ar, no: no || String(i + 1), i, local: '' }));
+    babs = { byPos: new Map(), list };
+    list.forEach(b => { if (!babs.byPos.has(b.pos)) babs.byPos.set(b.pos, []); babs.byPos.get(b.pos).push(b); });
+    const goTo = b => {
+        const idx = all.findIndex(x => x.pos >= b.pos);
+        if (idx >= (st.shown || 30)) st.shown = idx + 20;
+        filter.value = '';
+        draw();
+        const h = listBox.querySelector(`[data-bab="${b.i}"]`);
+        if (h) h.scrollIntoView({ block: 'start' });
+    };
+    const rows = el('div', { class: 'bab-index-list' });
+    const fillIndex = () => {
+        rows.innerHTML = '';
+        list.forEach(b => rows.appendChild(el('button', { type: 'button', class: 'bab-index-row', onclick: () => goTo(b) },
+            el('span', { class: 'bab-no' }, b.no),
+            el('span', { class: 'bab-index-main' },
+                el('span', {}, b.local || b.en || b.ar),
+                b.ar ? el('span', { class: 'bab-ar', dir: 'rtl' }, b.ar) : null))));
+    };
+    fillIndex();
+    indexBox.appendChild(el('details', { class: 'hadith-details bab-index' },
+        el('summary', {}, `Kapitler i denne bog (${list.length}) · الأبواب`), rows));
+    draw();
+
+    // Kapiteltitlerne på dansk (maskinoversat én gang og gemt)
+    const lang = settings.targetLang;
+    if (lang === 'en' || lang === 'ar') return;
+    const key = `babs:${book.id}:${sec[0]}:${lang}`;
+    let names = store.get(key, null);
+    if (!names) {
+        try {
+            const out = await translateText(list.map((b, i) => `${i + 1}. ${(b.en || b.ar).replace(/\s+/g, ' ')}`).join('\n'), b0lang(list), lang);
+            const found = {};
+            for (const m of out.matchAll(/(?:^|\n|\s)(\d{1,4})\.\s*([^\n]*?)(?=\s+\d{1,4}\.\s|\n|$)/g)) found[Number(m[1])] = m[2].trim();
+            if (Object.keys(found).length < list.length * 0.7) return;
+            names = list.map((b, i) => found[i + 1] || '');
+            store.set(key, names);
+        } catch (e) { return; }
+    }
+    if (token !== hRenderToken) return;
+    list.forEach((b, i) => { b.local = names[i] || ''; });
+    fillIndex();
+    draw();
+}
+const b0lang = list => list.some(b => b.en) ? 'en' : 'ar';
+
+// Kapiteloverskrift i listen
+function babHeading(b) {
+    return el('div', { class: 'bab-heading', 'data-bab': String(b.i) },
+        el('div', { class: 'bab-label' }, `Kapitel ${b.no}`),
+        el('div', { class: 'bab-title' }, b.local || b.en || ''),
+        b.ar ? el('div', { class: 'bab-ar', dir: 'rtl' }, b.ar) : null,
+        b.local && b.en ? el('div', { class: 'list-sub en' }, b.en) : null);
+}
+
+// Kapiteldata (babs/<samling>.js, fra sunnah.com) indlæses først når de skal bruges
+const BABS_FILES = ['bukhari', 'muslim', 'abudawud', 'tirmidhi', 'nasai', 'ibnmajah', 'hj-riyad', 'hj-bulugh', 'hj-mishkat', 'hj-adab'];
+const babsLoading = {};
+function loadBabs(id) {
+    if (!BABS_FILES.includes(id)) return Promise.resolve(null);
+    if (window.HADITH_BABS && window.HADITH_BABS[id]) return Promise.resolve(window.HADITH_BABS[id]);
+    if (!babsLoading[id]) {
+        babsLoading[id] = new Promise(resolve => {
+            const s = document.createElement('script');
+            s.src = `babs/${id}.js`;
+            s.onload = () => resolve((window.HADITH_BABS || {})[id] || null);
+            s.onerror = () => { delete babsLoading[id]; resolve(null); };
+            document.head.appendChild(s);
+        });
+    }
+    return babsLoading[id];
 }
 
 // ---------------- 2) Arabiske værker fra Shamela ----------------
@@ -329,15 +415,10 @@ async function renderShBook(st, token) {
         const draw = () => {
             list.innerHTML = '';
             const q = filter ? normText(filter.value.trim()) : '';
-            book.kutub.forEach(([name, page], i) => {
+            book.kutub.forEach(([name, page, toc], i) => {
                 const da = local && local[i];
                 if (q && !matchesQuery(normText(name + ' ' + (da || '')), q)) return;
-                list.appendChild(el('button', {
-                    type: 'button', class: 'list-row', onclick: () => hPush({ level: 'shpage', book: book.id, page, label: da || name })
-                }, el('span', { class: 'list-main' },
-                    da ? el('span', { class: 'list-title' }, da) : null,
-                    el('span', { class: 'list-ar', dir: 'rtl' }, name)),
-                el('span', { class: 'list-sub' }, `s. ${page}`), el('span', { class: 'chev' }, '›')));
+                list.appendChild(shTocRow(book, { name, page, toc }, da));
             });
         };
         if (filter) filter.addEventListener('input', draw);
@@ -358,6 +439,73 @@ async function renderShBook(st, token) {
         }
     }
     hadithView.appendChild(el('button', { type: 'button', class: 'btn btn-ghost btn-block mt', onclick: () => openExternal(`${SHAMELA}${book.id}`) }, 'Åbn værket på shamela.ws ↗'));
+}
+
+// Én række i indholdet: med underkapitler → liste over dem, ellers direkte til siden
+function shTocRow(book, { name, page, toc }, da) {
+    return el('button', {
+        type: 'button', class: 'list-row', onclick: () => hPush(toc
+            ? { level: 'shtoc', book: book.id, toc, page, name, label: da || name }
+            : { level: 'shpage', book: book.id, page, label: da || name })
+    }, el('span', { class: 'list-main' },
+        da ? el('span', { class: 'list-title' }, da) : null,
+        el('span', { class: 'list-ar', dir: 'rtl' }, name),
+        toc ? el('span', { class: 'list-sub' }, 'Underkapitler (abwab) ›') : null),
+    el('span', { class: 'list-sub' }, `s. ${page}`), el('span', { class: 'chev' }, '›'));
+}
+
+// Underkapitler fra Shamela (ajax/titlechilds) – gemmes på telefonen, så de kun hentes én gang
+async function shTocChildren(book, toc) {
+    const key = `shToc:${book.id}:${toc}`;
+    const cached = store.get(key, null);
+    if (cached) return cached;
+    const html = await httpRequest(`https://shamela.ws/ajax/titlechilds/${book.id}/${toc}`);
+    const doc = new DOMParser().parseFromString(`<div id="r">${html}</div>`, 'text/html');
+    // <ul><li>[<a class="exp_bu" data-id="…">[+]</a>]<a href="…/book/ID/SIDE">navn</a></li>…</ul>
+    const out = [];
+    doc.querySelectorAll('#r > ul > li').forEach(li => {
+        const a = [...li.children].find(x => x.tagName === 'A' && /\/book\/\d+\/\d+/.test(x.getAttribute('href') || ''));
+        if (!a) return;
+        const exp = li.querySelector(':scope > .exp_bu');
+        out.push({ name: a.textContent.trim(), page: Number(a.getAttribute('href').match(/\/book\/\d+\/(\d+)/)[1]), toc: exp ? Number(exp.getAttribute('data-id')) : 0 });
+    });
+    store.set(key, out);
+    return out;
+}
+
+async function renderShToc(st, token) {
+    const book = shBook(st.book);
+    hadithView.append(
+        el('h3', { class: 'list-head' }, book.name),
+        el('div', { class: 'list-ar big sh-title', dir: 'rtl' }, st.name || ''),
+        el('button', { type: 'button', class: 'btn btn-ghost btn-block', onclick: () => hPush({ level: 'shpage', book: book.id, page: st.page, label: `Side ${st.page}` }) },
+            `Læs fra begyndelsen (side ${st.page}) ›`));
+    const box = el('div', { class: 'list mt' });
+    hadithView.appendChild(box);
+    box.appendChild(spinnerLine('Henter underkapitler…'));
+    const kids = await shTocChildren(book, st.toc);
+    if (token !== hRenderToken) return;
+    box.innerHTML = '';
+    if (!kids.length) { box.appendChild(el('p', { class: 'note' }, 'Ingen underkapitler.')); return; }
+    const lang = settings.targetLang;
+    const nameKey = `shTocNames:${book.id}:${st.toc}:${lang}`;
+    const draw = names => {
+        box.innerHTML = '';
+        kids.forEach((k, i) => box.appendChild(shTocRow(book, k, names && names[i])));
+    };
+    let names = lang === 'ar' ? null : store.get(nameKey, null);
+    draw(names);
+    if (names || lang === 'ar') return;
+    // Navnene på dansk (maskinoversat én gang og gemt)
+    try {
+        const out = await translateText(kids.map((k, i) => `${i + 1}. ${k.name.replace(/\s+/g, ' ')}`).join('\n'), 'ar', lang);
+        const found = {};
+        for (const m of out.matchAll(/(?:^|\n|\s)(\d{1,4})\.\s*([^\n]*?)(?=\s+\d{1,4}\.\s|\n|$)/g)) found[Number(m[1])] = m[2].trim();
+        if (Object.keys(found).length < kids.length * 0.7 || token !== hRenderToken) return;
+        names = kids.map((k, i) => found[i + 1] || '');
+        store.set(nameKey, names);
+        draw(names);
+    } catch (e) { /* behold arabisk */ }
 }
 
 async function renderShPage(st, token) {

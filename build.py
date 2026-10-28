@@ -18,8 +18,8 @@ SRC = HERE.parent / 'app' / 'src' / 'main' / 'assets'
 WEB = HERE / 'web'
 OUT = HERE / 'docs'
 
-# Store filer der først hentes, når de bruges (ordlisterne til ordbøgerne)
-LAZY = re.compile(r'^words-.*\.js$')
+# Store filer der først hentes, når de bruges (ordlisterne til ordbøgerne og hadith-kapitlerne)
+LAZY = re.compile(r'^(words-.*\.js|babs/.*)$')  # matcher stien relativt til docs/
 
 HEAD = '''    <!-- Web-app (tilføjet af web-app/build.py) -->
     <link rel="manifest" href="manifest.webmanifest">
@@ -82,7 +82,7 @@ def main():
         h.update(p.relative_to(OUT).as_posix().encode())
         h.update(p.read_bytes())
     version = h.hexdigest()[:12]
-    precache = [p.relative_to(OUT).as_posix() for p in files if not LAZY.match(p.name)]
+    precache = [p.relative_to(OUT).as_posix() for p in files if not LAZY.match(p.relative_to(OUT).as_posix())]
     sw = (WEB / 'sw-template.js').read_text(encoding='utf-8')
     sw = sw.replace('__VERSION__', version).replace('__PRECACHE__', json.dumps(precache, ensure_ascii=False))
     (OUT / 'sw.js').write_text(sw, encoding='utf-8')

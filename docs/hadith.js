@@ -328,33 +328,10 @@ async function renderSection(st, token) {
     if (token !== hRenderToken) return;
     hadithView.innerHTML = '';
     const engMap = new Map(((eng && eng.hadiths) || []).map(h => [h.hadithnumber, h]));
-    const all = (ara.hadiths || []).filter(h => (h.text || '').trim()).map(h => ({ ar: h, en: engMap.get(h.hadithnumber) }));
-
-    hadithView.appendChild(el('h3', { class: 'list-head' }, `${book.name} · ${sec ? sec[1] : ''}`));
-    const filter = el('input', { type: 'search', class: 'search', placeholder: 'Søg i dette kapitel (arabisk eller engelsk)…' });
-    hadithView.appendChild(filter);
-    const listBox = el('div', {});
-    hadithView.appendChild(listBox);
-
-    const strip = s => s.replace(/[ً-ْٰـ]/g, '');
-    const draw = () => {
-        listBox.innerHTML = '';
-        const q = strip(filter.value.trim().toLowerCase());
-        const matches = q
-            ? all.filter(x => strip(x.ar.text).includes(q) || (x.en && x.en.text.toLowerCase().includes(q)))
-            : all;
-        const shown = matches.slice(0, st.shown || 30);
-        if (!matches.length) listBox.appendChild(el('p', { class: 'note' }, 'Ingen hadith matcher søgningen.'));
-        shown.forEach(x => listBox.appendChild(bookHadithCard(book, x)));
-        if (matches.length > shown.length) {
-            listBox.appendChild(el('button', {
-                type: 'button', class: 'btn btn-ghost btn-block', onclick: () => { st.shown = (st.shown || 30) + 30; draw(); }
-            }, `Vis flere (${matches.length - shown.length} tilbage)`));
-        }
-    };
-    let t = null;
-    filter.addEventListener('input', () => { clearTimeout(t); t = setTimeout(draw, 250); });
-    draw();
+    // pos = nummeret i bogen (sunnah.com's "in-book reference"), bruges til at placere kapiteloverskrifterne
+    const all = (ara.hadiths || []).filter(h => (h.text || '').trim())
+        .map(h => ({ ar: h, en: engMap.get(h.hadithnumber), pos: h.reference && h.reference.hadith }));
+    showChapterList(book, sec ? [sec[0], sec[1]] : null, st, all);
 }
 
 function bookHadithCard(book, { ar, en }) {
