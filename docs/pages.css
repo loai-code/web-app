@@ -585,3 +585,12 @@ textarea:focus, input[type="search"]:focus, .dialog-input:focus { outline: 2px s
 .bab-index-row:last-child { border-bottom: 0; }
 .bab-no { flex: none; min-width: 2.2em; font-weight: 700; color: var(--gold); font-variant-numeric: tabular-nums; }
 .bab-index-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; overflow-wrap: anywhere; }
+
+/* Hadith-listerne: hurtig scroll (håndtaget deles med ordbogen) og "til toppen" */
+.to-top {
+    position: fixed; right: 44px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 12;
+    width: 46px; height: 46px; border-radius: 50%; border: none;
+    background: var(--blue-600); color: #fff; font-size: 22px; line-height: 46px; padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); opacity: 0.9; cursor: pointer;
+}
+.to-top:active { background: var(--gold); }

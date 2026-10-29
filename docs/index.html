@@ -311,9 +311,6 @@
             </div>
         </section>
         <div id="dictListTop"></div>
-        <div class="fast-scroll" id="fastScroll" hidden aria-hidden="true">
-            <div class="fs-thumb" id="fsThumb"></div>
-        </div>
         <section class="card dict-list-card" id="dictListCard">
             <div id="dictList"></div>
         </section>
@@ -438,8 +435,11 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="config.js"></script>
-    <script src="quran-data.js"></script>
+    <div class="fast-scroll" id="fastScroll" hidden aria-hidden="true">
+        <div class="fs-thumb" id="fsThumb"></div>
+    </div>
+    <button type="button" class="to-top" id="toTop" hidden aria-label="Til toppen">↑</button>
+    <script src="config.js"></script>    <script src="quran-data.js"></script>
     <script src="tafsir-list.js"></script>
     <script src="tafsir-names-da.js"></script>
     <script src="app.js"></script>

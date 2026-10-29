@@ -169,7 +169,20 @@ async function showChapterList(book, sec, st, all) {
     hadithView.append(indexBox, filter, listBox);
     const strip = s => s.replace(/[ً-ْٰـ]/g, '');
     let babs = null; // { byPos: Map(pos → [kapitel]), list: [kapitel] }
+    let more = null;
+    const step = () => { st.shown = (st.shown || 30) + 50; draw(); };
+    // Hentes flere automatisk, når man nærmer sig bunden – og alle på én gang, når man trækker i scroll-håndtaget
+    const autoMore = 'IntersectionObserver' in window
+        ? new IntersectionObserver(es => { if (token === hRenderToken && es.some(e => e.isIntersecting)) step(); }, { rootMargin: '1200px 0px' })
+        : null;
+    hadithView.onFastScroll = () => {
+        if (token !== hRenderToken || !more) return;
+        st.shown = all.length;
+        draw();
+    };
     const draw = () => {
+        if (autoMore) autoMore.disconnect();
+        more = null;
         listBox.innerHTML = '';
         const q = strip(filter.value.trim().toLowerCase());
         const matches = q ? all.filter(x => strip(x.ar.text).includes(q) || (x.en && x.en.text.toLowerCase().includes(q))) : all;
@@ -181,9 +194,9 @@ async function showChapterList(book, sec, st, all) {
             listBox.appendChild(bookHadithCard(like, x));
         });
         if (matches.length > shown.length) {
-            listBox.appendChild(el('button', {
-                type: 'button', class: 'btn btn-ghost btn-block', onclick: () => { st.shown = (st.shown || 30) + 30; draw(); }
-            }, `Vis flere (${matches.length - shown.length} tilbage)`));
+            more = el('button', { type: 'button', class: 'btn btn-ghost btn-block', onclick: step }, `Vis flere (${matches.length - shown.length} tilbage)`);
+            listBox.appendChild(more);
+            if (autoMore) requestAnimationFrame(() => { if (more && more.isConnected) autoMore.observe(more); });
         }
     };
     let t = null;

@@ -417,7 +417,18 @@ renderDict();
 // =================================================================
 // Trækbar scrollbar: træk i håndtaget i højre side for hurtigt at komme
 // gennem listen. Der vises bevidst ikke hvilket bogstav man er ved – man skal selv finde ordet.
+// Bruges også i hadith-listerne (sammen med "til toppen"-knappen).
 // =================================================================
+
+// Den lange liste håndtaget styrer på hver side
+const fastScrollTargets = {
+    dict: () => dictMode === 'list' ? $('dictListCard') : null,
+    hadith: () => hadithView
+};
+function fsTarget() {
+    const f = fastScrollTargets[currentPage];
+    return f ? f() : null;
+}
 
 const fastScroll = $('fastScroll');
 const fsThumb = $('fsThumb');
@@ -426,7 +437,7 @@ let fsDragging = false;
 let fsRaf = 0;
 
 function listRange() {
-    const card = $('dictListCard');
+    const card = fsTarget() || $('dictListCard');
     const start = card.getBoundingClientRect().top + window.scrollY - 90;
     const end = start + card.offsetHeight - window.innerHeight + 120;
     return { start, end: Math.max(start + 1, end) };
@@ -434,8 +445,10 @@ function listRange() {
 
 function updateFastScroll() {
     fsRaf = 0;
-    const show = currentPage === 'dict' && dictMode === 'list' && $('dictListCard').offsetHeight > window.innerHeight * 3;
+    const target = fsTarget();
+    const show = !!target && target.offsetHeight > window.innerHeight * 3;
     fastScroll.hidden = !show;
+    $('toTop').hidden = !(currentPage === 'hadith' && window.scrollY > window.innerHeight * 2);
     if (!show) return;
     const { start, end } = listRange();
     const ratio = Math.min(1, Math.max(0, (window.scrollY - start) / (end - start)));
@@ -452,6 +465,9 @@ function fsMoveTo(clientY) {
 }
 
 fastScroll.addEventListener('pointerdown', e => {
+    // Hadith: hent resten af bogen ind, så håndtaget dækker hele bogen
+    const target = fsTarget();
+    if (target && target.onFastScroll) target.onFastScroll();
     fsDragging = true;
     fastScroll.classList.add('active');
     fastScroll.setPointerCapture(e.pointerId);
@@ -464,4 +480,10 @@ const fsEnd = () => {
     fastScroll.classList.remove('active');
 };
 fastScroll.addEventListener('pointerup', fsEnd);
+$('toTop').addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+// Listen skifter højde, når siden tegnes om (ny bog, flere hadith osv.)
+new MutationObserver(() => { if (!fsRaf) fsRaf = requestAnimationFrame(updateFastScroll); })
+    .observe(document.body, { attributes: true, subtree: true, attributeFilter: ['hidden'] });
+new MutationObserver(() => { if (!fsRaf) fsRaf = requestAnimationFrame(updateFastScroll); })
+    .observe(hadithView, { childList: true, subtree: true });
 fastScroll.addEventListener('pointercancel', fsEnd);
