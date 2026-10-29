@@ -87,6 +87,12 @@ async function renderHjBook(st, token) {
     hadithView.append(
         el('h3', { class: 'list-head' }, el('span', {}, book.name), ' ', el('span', { class: 'list-ar', dir: 'rtl' }, book.ar)),
         el('p', { class: 'note' }, `${book.author.replace(/ · sunnah\.com$/, '')} · ${book.total} numre med arabisk og engelsk (sunnah.com).`));
+    // sunnah.com har kun kapitler (abwab) for nogle af Bulugh al-Marams bøger – den arabiske udgave på Shamela har dem alle
+    if (book.id === 'hj-bulugh' && SHAMELA_HADITH.some(b => b.id === 9111)) {
+        hadithView.appendChild(el('button', {
+            type: 'button', class: 'btn btn-ghost btn-block', onclick: () => hPush({ level: 'shbook', book: 9111, label: 'Bulugh al-Maram (arabisk)' })
+        }, 'Alle kapitler (abwab) på arabisk – Shamela ›'));
+    }
     const list = el('div', { class: 'list' });
     const rows = book.sections.map(([id, en, ar, count, first], i) => {
         const title = el('span', { class: 'list-title' }, `${i + 1}. ${en || ar}`);

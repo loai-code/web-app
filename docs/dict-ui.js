@@ -426,6 +426,7 @@ const fastScrollTargets = {
     hadith: () => hadithView
 };
 function fsTarget() {
+    if (typeof currentPage === 'undefined') return null; // pages.js er ikke indlæst endnu
     const f = fastScrollTargets[currentPage];
     return f ? f() : null;
 }

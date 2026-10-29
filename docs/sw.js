@@ -1,7 +1,7 @@
 'use strict';
 // Service worker: gør web-appen hurtig og brugbar offline.
 // VERSION og PRECACHE indsættes af build.py – en ny version udløser "Opdatér"-beskeden i appen.
-const VERSION = '4a06be75e43c';
+const VERSION = 'a2a29cd745ef';
 const PRECACHE = ["adhkar-data.js", "adhkar.js", "app.js", "ar-dict-index.js", "asbab.js", "calendar.js", "config.js", "dict-ui.js", "dict.js", "fonts/Amiri-Regular.ttf", "fonts/AmiriQuran-Regular.ttf", "hadith-books-more.js", "hadith-books.js", "hadith-more.js", "hadith.js", "icons/apple-touch-icon.png", "icons/favicon-32.png", "icons/icon-192.png", "icons/icon-512.png", "index.html", "listen.js", "manifest.webmanifest", "notes.js", "pages.css", "pages.js", "qibla.js", "quiz.js", "quran-data.js", "search.js", "sharh.js", "srs.js", "style.css", "sunnah-extra.js", "tafsir-list.js", "tafsir-names-da.js", "tts.js", "ui.js", "web.css", "web.js", "wordlists.js"];
 const CORE = 'core-' + VERSION;
 const EXTRA = 'extra-v1';           // store ordlister – ændres sjældent, beholdes på tværs af versioner
