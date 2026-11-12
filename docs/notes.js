@@ -703,17 +703,19 @@ function renderCatPicker() {
     $('saveConfirmBtn').disabled = !saveSelected;
     const sel = getCat(saveSelected);
     $('saveNewCatBtn').textContent = sel ? `＋ Ny underkategori i "${sel.name}"` : '＋ Ny kategori';
+    $('saveNewTopCatBtn').hidden = !sel; // en helt ny kategori, selv når en anden er valgt
 }
 
-$('saveNewCatBtn').addEventListener('click', async () => {
-    const parent = getCat(saveSelected);
+$('saveNewCatBtn').addEventListener('click', () => saveNewCat(getCat(saveSelected)));
+$('saveNewTopCatBtn').addEventListener('click', () => saveNewCat(null));
+async function saveNewCat(parent) {
     const name = await askText(parent ? `Ny underkategori i "${parent.name}"` : 'Ny kategori', '', 'Opret');
     if (!name) return;
     const cat = createCat(name, parent ? parent.id : null);
     if (parent) { notesExpanded.add(parent.id); store.set('notesExpanded', [...notesExpanded]); }
     saveSelected = cat.id;
     renderCatPicker();
-});
+}
 
 $('saveConfirmBtn').addEventListener('click', () => {
     const cat = getCat(saveSelected);

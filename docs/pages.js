@@ -7,6 +7,7 @@
 const PAGES = {
     memorize: { title: 'Koran-memorering', ar: 'حِفْظُ القُرْآن' },
     progress: { title: 'Fremskridt', ar: 'التَّقَدُّم' },
+    revelation: { title: 'Åbenbaring', ar: 'النُّزُول' },
     search: { title: 'Søg i Koranen', ar: 'البَحْث' },
     notes: { title: 'Noter', ar: 'المُذَكِّرَة' },
     hadith: { title: 'Hadith', ar: 'الحَدِيث' },
@@ -36,6 +37,7 @@ function showPage(name) {
     if (name === 'progress') renderProgress();
     if (name === 'calendar') renderCalendar();
     if (name === 'adhkar') renderAdhkar();
+    if (name === 'revelation') renderRevelation();
     if (name === 'search') setTimeout(() => $('qsInput').focus(), 100);
     if (name === 'memorize') updateSrsTodayBtn();
     if (name === 'hadith' && !hadithRendered) { hadithRendered = true; renderHadith(); }

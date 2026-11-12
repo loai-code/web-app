@@ -526,7 +526,8 @@ function showCurrent() {
     ar.className = 'ar';
     ar.textContent = 'سورة ' + SURAH_NAMES_AR[q.surah - 1];
     refSurah.append(ar, document.createTextNode(`${q.surah}. ${SURAH_NAMES_EN[q.surah]}`));
-    refVerse.textContent = `Vers ${q.ayah}`;
+    refVerse.textContent = `Vers ${q.ayah} `;
+    if (typeof revelationBadge === 'function') refVerse.appendChild(revelationBadge(q.surah, q.ayah)); // Mekka/Medina
     refProgress.textContent = `${currentIndex + 1} / ${questions.length}`;
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = false;

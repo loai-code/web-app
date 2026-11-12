@@ -594,3 +594,28 @@ textarea:focus, input[type="search"]:focus, .dialog-input:focus { outline: 2px s
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); opacity: 0.9; cursor: pointer;
 }
 .to-top:active { background: var(--gold); }
+
+/* Åbenbaring (Mekka/Medina) */
+.rev-badge {
+    display: inline-block; margin-left: 6px; padding: 2px 10px; border-radius: 999px; border: none;
+    font-size: 0.85rem; font-weight: 600; cursor: pointer; vertical-align: middle;
+}
+.rev-badge.rev-M, .rev-order.rev-M, .rev-stat.rev-M { background: #f4ead2; color: #7a5a14; }
+.rev-badge.rev-D, .rev-order.rev-D, .rev-stat.rev-D { background: #dcebdc; color: #24603a; }
+.rev-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+.rev-stat { border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-size: 0.9rem; }
+.rev-stat b { font-size: 1rem; }
+.rev-order {
+    flex: none; min-width: 34px; height: 34px; border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; margin-right: 10px;
+}
+.rev-period { margin: 14px 0 6px; padding: 8px 12px; border-radius: 10px; font-weight: 700; }
+.rev-period.rev-M { background: #f4ead2; color: #7a5a14; }
+.rev-period.rev-D { background: #dcebdc; color: #24603a; }
+.rev-exc { color: var(--gold); }
+:root[data-theme="dark"] .rev-M { background: #4a3c1c !important; color: #f1d999 !important; }
+:root[data-theme="dark"] .rev-D { background: #1f4029 !important; color: #b7e2c0 !important; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .rev-M { background: #4a3c1c !important; color: #f1d999 !important; }
+    :root:not([data-theme="light"]) .rev-D { background: #1f4029 !important; color: #b7e2c0 !important; }
+}
