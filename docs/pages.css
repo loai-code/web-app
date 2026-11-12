@@ -619,3 +619,59 @@ textarea:focus, input[type="search"]:focus, .dialog-input:focus { outline: 2px s
     :root:not([data-theme="light"]) .rev-M { background: #4a3c1c !important; color: #f1d999 !important; }
     :root:not([data-theme="light"]) .rev-D { background: #1f4029 !important; color: #b7e2c0 !important; }
 }
+
+/* Tidslinje */
+.tl-list { position: relative; }
+.tl-item { scroll-margin-top: 90px; }
+.tl-item {
+    position: relative; margin: 0 0 12px 10px; padding: 10px 12px 10px 16px;
+    border-left: 3px solid var(--line); border-radius: 0 12px 12px 0; background: var(--paper-2);
+}
+.tl-item::before {
+    content: ''; position: absolute; left: -9px; top: 14px; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--blue-600); border: 2px solid var(--paper);
+}
+.tl-item.tl-M { border-left-color: #c9a24a; }
+.tl-item.tl-M::before { background: #c9a24a; }
+.tl-item.tl-D { border-left-color: #4b9a62; }
+.tl-item.tl-D::before { background: #4b9a62; }
+.tl-year { font-weight: 800; font-size: 1.05rem; color: var(--blue-600); }
+.tl-when { font-size: 0.85rem; opacity: 0.75; }
+.tl-title { margin: 4px 0 6px; font-size: 1rem; }
+.tl-desc { margin: 6px 0; font-size: 0.93rem; line-height: 1.45; }
+.tl-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
+.tl-sikker { background: #dcefe0; color: #1f6435; }
+.tl-sandsynlig { background: #f7ecc6; color: #7a5a00; }
+.tl-omstridt { background: #fbe0c8; color: #8a4300; }
+.tl-svag { background: #f6d5d5; color: #8f1f1f; }
+.tl-verses { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.tl-verse {
+    display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 10px;
+    border: 1px solid var(--blue-600); background: transparent; color: inherit; font: inherit; font-size: 0.85rem; cursor: pointer; text-align: left;
+}
+.tl-verse small { flex-basis: 100%; opacity: 0.75; font-size: 0.75rem; }
+.tl-verse.tl-om { border-style: dashed; opacity: 0.85; }
+.tl-dot { font-size: 0.7rem; }
+.tl-src { margin-top: 8px; padding: 10px; border-radius: 10px; background: var(--paper); border: 1px solid var(--line); font-size: 0.9rem; }
+.tl-src-row { display: flex; flex-direction: column; gap: 2px; margin-bottom: 8px; }
+.tl-src-row .tl-pill { align-self: flex-start; }
+.tl-why { margin: 8px 0; line-height: 1.45; }
+.tl-src-head { display: block; margin-top: 8px; }
+.tl-hadith { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.tl-hadith-box:empty { display: none; }
+.tl-src-list { margin: 4px 0 0; padding-left: 20px; }
+.tl-legend { margin: 6px 0 10px; font-size: 0.9rem; }
+.tl-legend summary { cursor: pointer; font-weight: 600; }
+.tl-legend-row { display: flex; flex-direction: column; margin: 6px 0; }
+.rev-badge.tl-badge { margin-top: 4px; }
+:root[data-theme="dark"] .tl-sikker { background: #1f4029; color: #b7e2c0; }
+:root[data-theme="dark"] .tl-sandsynlig { background: #4a3c1c; color: #f1d999; }
+:root[data-theme="dark"] .tl-omstridt { background: #4d2f17; color: #f5c595; }
+:root[data-theme="dark"] .tl-svag { background: #4a1f1f; color: #f2b3b3; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .tl-sikker { background: #1f4029; color: #b7e2c0; }
+    :root:not([data-theme="light"]) .tl-sandsynlig { background: #4a3c1c; color: #f1d999; }
+    :root:not([data-theme="light"]) .tl-omstridt { background: #4d2f17; color: #f5c595; }
+    :root:not([data-theme="light"]) .tl-svag { background: #4a1f1f; color: #f2b3b3; }
+}

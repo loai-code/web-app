@@ -80,9 +80,10 @@ function renderRevelation() {
         el('div', { class: 'rev-stats' },
             el('div', { class: 'rev-stat rev-M' }, el('b', {}, `${REV_ICON.M} Mekka`), el('span', {}, `${sum.M.suras} suraer · ${sum.M.verses.toLocaleString('da-DK')} vers`)),
             el('div', { class: 'rev-stat rev-D' }, el('b', {}, `${REV_ICON.D} Medina`), el('span', {}, `${sum.D.suras} suraer · ${sum.D.verses.toLocaleString('da-DK')} vers`))),
-        el('div', { class: 'chip-tabs' }, ...[['order', 'Rækkefølge'], ['M', '🕋 Mekka'], ['D', '🕌 Medina']].map(([k, label]) =>
+        el('div', { class: 'chip-tabs' }, ...[['order', 'Rækkefølge'], ['timeline', '📅 Tidslinje'], ['M', '🕋 Mekka'], ['D', '🕌 Medina']].map(([k, label]) =>
             el('button', { type: 'button', class: 'chip-tab' + (revTab === k ? ' active' : ''), onclick: () => { revTab = k; store.set('revTab', k); renderRevelation(); } }, label))));
 
+    if (revTab === 'timeline') { renderTimeline(view); return; }
     const list = el('div', { class: 'list' });
     if (revTab === 'order') {
         view.appendChild(el('p', { class: 'note' }, 'Suraerne i den rækkefølge de blev åbenbaret – fra det første vers i Hira-hulen til Medina-perioden. Tallet til venstre er pladsen i rækkefølgen; tryk på en sura for at øve den.'));
@@ -123,4 +124,165 @@ function renderRevelation() {
     }
     view.appendChild(list);
     view.appendChild(el('p', { class: 'note' }, 'Kilde: rækkefølgen og inddelingen følger den egyptiske standardmushaf (som Madinah-mushafen, via Tanzil); undtagelserne er dem, der står i suraernes overskrifter. De bygger på overleveringer, og de lærde er uenige om enkelte suraer og vers.'));
+}
+
+// =================================================================
+// Tidslinje (data i timeline-data.js) med kilde og pålidelighed for hver begivenhed
+// =================================================================
+
+const TL_CONF = {
+    sikker: { label: 'Sikker', icon: '🟢', text: 'Står i Koranen selv eller i sahih hadith, og kilderne er enige.' },
+    sandsynlig: { label: 'Sandsynlig', icon: '🟡', text: 'Flertallet af de lærde og sira-forfatterne, men uden sahih hadith med tidspunktet – eller kun omtrentligt.' },
+    omstridt: { label: 'Omstridt', icon: '🟠', text: 'De lærde nævner forskellige år, dage eller vers.' },
+    svag: { label: 'Svag', icon: '🔴', text: 'Fortællingen er kendt, men overleveringen har ingen sikker kæde.' }
+};
+let tlFocus = null;
+let tlIndex = null;
+
+function tlConfPill(kind, level) {
+    const c = TL_CONF[level];
+    return el('span', { class: 'tl-pill tl-' + level, title: c.text }, `${c.icon} ${kind}: ${c.label}`);
+}
+
+function openRangeToMemorize(s, from, to) {
+    surahSelect.value = s;
+    startVerse.value = from;
+    endVerse.value = to;
+    showPage('memorize');
+    startSession();
+}
+
+function verseLabel(v) {
+    if (v.label) return v.label;
+    return v.a[0] === v.a[1] ? `${v.s}:${v.a[0]}` : `${v.s}:${v.a[0]}–${v.a[1]}`;
+}
+
+// Én hadith hentes og vises inde i kildefeltet
+async function showTimelineHadith(box, bookId, num, btn) {
+    if (box.childElementCount) { box.innerHTML = ''; btn.textContent = 'Læs ›'; return; }
+    btn.disabled = true;
+    box.appendChild(spinnerLine('Henter hadith…'));
+    try {
+        const [ara, eng] = await Promise.all([
+            getHadithApi(`ara-${bookId}/${num}.json`),
+            getHadithApi(`eng-${bookId}/${num}.json`).catch(() => null)
+        ]);
+        box.innerHTML = '';
+        const book = HADITH_BOOKS.find(b => b.id === bookId);
+        box.appendChild(bookHadithCard(book, { ar: ara.hadiths[0], en: eng && eng.hadiths && eng.hadiths[0] }));
+        btn.textContent = 'Skjul';
+    } catch (e) {
+        box.innerHTML = '';
+        box.appendChild(el('div', { class: 'status error' }, '⚠ Kunne ikke hente hadithen: ' + e.message));
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function timelineSources(e) {
+    const box = el('div', { class: 'tl-src', hidden: true });
+    box.append(
+        el('div', { class: 'tl-src-row' }, tlConfPill('Tidspunkt', e.date), el('span', {}, TL_CONF[e.date].text)),
+        el('div', { class: 'tl-src-row' }, tlConfPill('Kobling til versene', e.link), el('span', {}, TL_CONF[e.link].text)),
+        el('p', { class: 'tl-why' }, e.why));
+    if (e.h && e.h.length) {
+        box.appendChild(el('b', { class: 'tl-src-head' }, 'Hadith'));
+        e.h.forEach(([bookId, num, desc]) => {
+            const book = HADITH_BOOKS.find(b => b.id === bookId);
+            const card = el('div', { class: 'tl-hadith-box' });
+            const btn = el('button', { type: 'button', class: 'btn btn-small btn-ghost' }, 'Læs ›');
+            btn.addEventListener('click', () => showTimelineHadith(card, bookId, num, btn));
+            box.append(el('div', { class: 'tl-hadith' }, el('span', {}, el('b', {}, `${book ? book.name : bookId} nr. ${num}`), ` – ${desc}`), btn), card);
+        });
+    }
+    if (e.src && e.src.length) {
+        box.appendChild(el('b', { class: 'tl-src-head' }, 'Andre kilder'));
+        box.appendChild(el('ul', { class: 'tl-src-list' }, e.src.map(x => el('li', {}, x))));
+    }
+    return box;
+}
+
+function timelineCard(e) {
+    const card = el('article', { class: 'tl-item tl-' + e.period, id: 'tl-' + e.id });
+    const src = timelineSources(e);
+    const srcBtn = el('button', { type: 'button', class: 'btn btn-small btn-ghost tl-src-btn' }, 'ⓘ Kilde og pålidelighed');
+    const openSrc = open => {
+        src.hidden = !open;
+        srcBtn.textContent = open ? 'ⓘ Skjul kilde' : 'ⓘ Kilde og pålidelighed';
+    };
+    srcBtn.addEventListener('click', () => openSrc(src.hidden));
+    card.append(
+        el('div', { class: 'tl-year' }, e.y),
+        el('div', { class: 'tl-when' }, e.w),
+        el('h3', { class: 'tl-title' }, e.t),
+        el('div', { class: 'tl-pills' }, tlConfPill('Tidspunkt', e.date), tlConfPill('Kobling', e.link)),
+        el('p', { class: 'tl-desc' }, e.d));
+    if (e.v.length) {
+        card.appendChild(el('div', { class: 'tl-verses' }, e.v.map(v => {
+            const conf = v.c || e.link;
+            return el('button', {
+                type: 'button', class: 'tl-verse' + (v.om ? ' tl-om' : ''),
+                title: 'Øv disse vers – kobling: ' + TL_CONF[conf].label.toLowerCase(),
+                onclick: () => openRangeToMemorize(v.s, v.a[0], v.a[1])
+            },
+            el('span', { class: 'tl-dot' }, TL_CONF[conf].icon),
+            el('span', {}, `${verseLabel(v)} · ${SURAH_NAMES_EN[v.s]}`),
+            v.n ? el('small', {}, v.n) : null);
+        })));
+    }
+    card.append(srcBtn, src);
+    card._openSrc = () => openSrc(true);
+    return card;
+}
+
+function renderTimeline(view) {
+    view.appendChild(el('p', { class: 'note' }, 'De vigtigste begivenheder fra 570 til 632 og de vers, der knyttes til dem. Årstallene er omregnet fra den islamiske kalender og er omtrentlige – især i Mekka-perioden. Tryk på et vers for at øve det, og på "Kilde og pålidelighed" for at se, hvad tidspunktet bygger på.'));
+    view.appendChild(el('details', { class: 'tl-legend' },
+        el('summary', {}, 'Hvad betyder farverne?'),
+        el('p', {}, 'Hver begivenhed har to vurderinger: hvor sikkert tidspunktet er, og hvor sikkert det er, at versene hører til begivenheden.'),
+        ...Object.values(TL_CONF).map(c => el('div', { class: 'tl-legend-row' }, el('b', {}, `${c.icon} ${c.label}`), el('span', {}, c.text))),
+        el('p', {}, 'Vers med stiplet kant omtaler begivenheden, men blev åbenbaret på et andet tidspunkt.')));
+    const list = el('div', { class: 'tl-list' });
+    let period = null;
+    TIMELINE.forEach(e => {
+        if (e.period !== 'pre' && e.period !== period) {
+            list.appendChild(el('div', { class: 'rev-period rev-' + e.period }, e.period === 'M' ? '🕋 Mekka-perioden (ca. 610–622)' : '🕌 Medina-perioden – efter hijra (622–632)'));
+            period = e.period;
+        }
+        list.appendChild(timelineCard(e));
+    });
+    view.appendChild(list);
+    view.appendChild(el('p', { class: 'note' }, 'Kilder: hadith-numrene følger appens samlinger (sunnah.com-nummerering). Sira: Ibn Ishaq/Ibn Hisham, Ibn Sa\'d og at-Tabari. De fleste vers har ingen kendt dato og er derfor ikke med her.'));
+    if (tlFocus) {
+        const card = $('tl-' + tlFocus);
+        tlFocus = null;
+        if (card) { card._openSrc(); requestAnimationFrame(() => card.scrollIntoView({ block: 'start' })); }
+    }
+}
+
+// Mærke med årstal ved verset under memorering – kun for vers der blev åbenbaret ved begivenheden
+function timelineEventFor(surah, ayah) {
+    if (!tlIndex) {
+        tlIndex = {};
+        TIMELINE.forEach(e => e.v.forEach(v => {
+            if (v.om || !e.b) return;
+            (tlIndex[v.s] = tlIndex[v.s] || []).push({ e, v, size: v.a[1] - v.a[0] });
+        }));
+        Object.values(tlIndex).forEach(arr => arr.sort((x, y) => x.size - y.size));
+    }
+    return (tlIndex[surah] || []).find(m => ayah >= m.v.a[0] && ayah <= m.v.a[1]) || null;
+}
+
+function timelineBadge(surah, ayah) {
+    const m = timelineEventFor(surah, ayah);
+    if (!m) return null;
+    const link = m.v.c || m.e.link;
+    // Farven følger den svageste af de to vurderinger
+    const order = ['sikker', 'sandsynlig', 'omstridt', 'svag'];
+    const conf = order[Math.max(order.indexOf(m.e.date), order.indexOf(link))];
+    return el('button', {
+        type: 'button', class: 'rev-badge tl-badge tl-' + conf,
+        title: `Tidspunkt: ${TL_CONF[m.e.date].label} · kobling: ${TL_CONF[link].label} – tryk for kilden`,
+        onclick: () => { revTab = 'timeline'; tlFocus = m.e.id; showPage('revelation'); }
+    }, `📅 ${m.e.b} ${TL_CONF[conf].icon}`);
 }

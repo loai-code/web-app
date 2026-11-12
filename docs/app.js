@@ -528,6 +528,7 @@ function showCurrent() {
     refSurah.append(ar, document.createTextNode(`${q.surah}. ${SURAH_NAMES_EN[q.surah]}`));
     refVerse.textContent = `Vers ${q.ayah} `;
     if (typeof revelationBadge === 'function') refVerse.appendChild(revelationBadge(q.surah, q.ayah)); // Mekka/Medina
+    if (typeof timelineBadge === 'function') { const tb = timelineBadge(q.surah, q.ayah); if (tb) refVerse.appendChild(tb); } // årstal
     refProgress.textContent = `${currentIndex + 1} / ${questions.length}`;
     prevBtn.disabled = currentIndex === 0;
     nextBtn.disabled = false;
